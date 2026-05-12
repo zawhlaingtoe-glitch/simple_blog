@@ -1,0 +1,5 @@
+{
+    "workbench.browser.showInTitleBar": false,
+    "workbench.browser.enableChatTools": false,
+    "git.ignoreLimitWarning": true
+}
