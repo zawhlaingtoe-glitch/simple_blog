@@ -29,6 +29,8 @@ app.get("/", (req, res) => {
     })
 
 })
+const postRoute = require("./routes/postRoute");
+app.use("/posts", postRoute)
 app.use("/users", userRoute)
 
 app.use((req, res) => {
