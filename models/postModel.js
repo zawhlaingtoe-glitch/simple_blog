@@ -2,9 +2,20 @@ const db = require("../config/database");
 
 
 class Post {
+    static async ensureAuthorPhotoColumn() {
+        try {
+            await db.query("ALTER TABLE USERS ADD COLUMN profile_photo VARCHAR(255) NULL");
+        } catch (error) {
+            if (error.code !== "ER_DUP_FIELDNAME") {
+                throw error;
+            }
+        }
+    }
+
     static async findAll(limit = 5, offset = 0) {
         try {
-            const [rows] = await db.query("SELECT posts.*, users.name AS author FROM posts LEFT JOIN users ON posts.user_id = users.id ORDER BY posts.id DESC LIMIT ? OFFSET ?", [limit, offset]);
+            await Post.ensureAuthorPhotoColumn();
+            const [rows] = await db.query("SELECT posts.*, username AS author, users.profile_photo AS author_photo FROM posts LEFT JOIN users ON posts.user_id = users.id ORDER BY posts.id DESC LIMIT ? OFFSET ?", [limit, offset]);
             return rows
         } catch (error) {
             console.error("Error fetching posts: ", error);
@@ -15,8 +26,9 @@ class Post {
     static async findByUserId(userId) {
         try {
             //
+            await Post.ensureAuthorPhotoColumn();
             const [rows] = await db.query(
-                "SELECT posts.*, username AS author FROM posts JOIN users ON posts.user_id = users.id WHERE posts.user_id = ? ORDER BY posts.created_at DESC", [userId]
+                "SELECT posts.*, username AS author, users.profile_photo AS author_photo FROM posts JOIN users ON posts.user_id = users.id WHERE posts.user_id = ? ORDER BY posts.created_at DESC", [userId]
             );
 
 
@@ -41,7 +53,8 @@ class Post {
     }
     static async findByid(id) {
         try {
-            const [rows] = await db.query("SELECT posts.*, username AS author FROM posts JOIN users ON posts.user_id = users.id WHERE posts.id = ?", [id])
+            await Post.ensureAuthorPhotoColumn();
+            const [rows] = await db.query("SELECT posts.*, username AS author, users.profile_photo AS author_photo FROM posts JOIN users ON posts.user_id = users.id WHERE posts.id = ?", [id])
             return rows[0]
         } catch (error) {
             console.error("Error: ", error)

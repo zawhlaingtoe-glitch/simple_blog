@@ -1,0 +1,50 @@
+<%- include('../partials/header') %>
+
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+                <div class="hero-panel composer-panel p-4 p-md-5">
+                    <div class="d-flex align-items-start justify-content-between gap-3 mb-4">
+                        <div class="d-flex align-items-center gap-3">
+                            <a href="/posts" class="btn btn-outline-brand btn-sm px-3" aria-label="Back to posts">
+                                <i class="bi bi-arrow-left"></i>
+                            </a>
+                            <div>
+                                <span class="section-label">New Article</span>
+                                <h2 class="fw-bold mb-1">Create Post</h2>
+                                <p class="text-muted small mb-0">Publishing as <%= user ? user.username : 'your account' %></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form action="/posts/create" method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="title" class="form-label fw-semibold">Title</label>
+                            <input type="text" id="title" class="form-control py-3" name="title" placeholder="What are you writing about?" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="content" class="form-label fw-semibold">Content</label>
+                            <textarea id="content" name="content" class="form-control" rows="9" placeholder="Write your post..." required></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="photo" class="form-label fw-semibold">Cover Photo <span class="text-muted small">(optional)</span></label>
+                            <input type="file" id="photo" class="form-control py-3" name="photo" accept="image/*" />
+                        </div>
+
+                        <div class="d-flex flex-column flex-sm-row gap-2">
+                            <button type="submit" class="btn btn-brand flex-grow-1">
+                                <i class="bi bi-send me-2"></i>Publish Post
+                            </button>
+                            <a href="/posts" class="btn btn-outline-brand px-4">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </body>
+
+    </html>

@@ -1,11 +1,20 @@
 const express = require("express");
 const route = express.Router();
 const userController = require("../controllers/userController");
-const verify = require("../middleware/auth")
+const { verifyToken, verifyTokenAndAuthorization } = require("../middleware/auth");
 
-route.post("/register", userController.register)
+route.get("/register", userController.showRegisterForm);
+route.post("/register", userController.register);
+route.get("/login", userController.showLoginForm);
 route.post("/login", userController.login);
-route.get("/me/:id", verify.verifyToken, verify.verifyTokenAndAuthorization, userController.currentUser)
-route.put("/update/:id", verify.verifyToken, verify.verifyTokenAndAuthorization, userController.updateUser)
-route.delete("/delete/:id", verify.verifyToken, verify.verifyTokenAndAuthorization, userController.delete)
+
+route.get("/profile", verifyToken, userController.profile);
+route.post("/profile", verifyToken, userController.updateProfile);
+route.post("/profile/posts", verifyToken, userController.createProfilePost);
+route.post("/profile/posts/:id/delete", verifyToken, userController.deleteProfilePost);
+
+route.get("/me/:id", verifyTokenAndAuthorization, userController.currentUser);
+route.put("/update/:id", verifyTokenAndAuthorization, userController.updateUser);
+route.delete("/delete/:id", verifyTokenAndAuthorization, userController.delete);
+
 module.exports = route;

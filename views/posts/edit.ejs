@@ -1,0 +1,54 @@
+<%- include('../partials/header') %>
+
+    <main class="py-5">
+        <section class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8 col-md-10">
+                    <div class="hero-panel composer-panel p-4 p-md-5">
+                        <div class="d-flex align-items-center gap-3 mb-4">
+                            <a href="/posts" class="btn btn-outline-brand btn-sm px-3" aria-label="Back to posts">
+                                <i class="bi bi-arrow-left"></i>
+                            </a>
+                            <div>
+                                <span class="section-label">Update Article</span>
+                                <h2 class="fw-bold mb-1">Edit Post</h2>
+                                <p class="text-muted small mb-0">Make changes and publish the latest version.</p>
+                            </div>
+                        </div>
+
+                        <% if (post.photo) { %>
+                            <img src="/upload/<%= post.photo %>" alt="<%= post.title %>" class="w-100 rounded mb-4" style="height:260px;object-fit:cover;">
+                            <% } %>
+
+                                <form action="/posts/update/<%= post.id %>" method="POST" enctype="multipart/form-data">
+                                    <div class="mb-3">
+                                        <label for="title" class="form-label fw-semibold">Title</label>
+                                        <input type="text" id="title" class="form-control py-3" name="title" value="<%= post.title %>" required />
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="content" class="form-label fw-semibold">Content</label>
+                                        <textarea id="content" name="content" class="form-control" rows="9" required><%= post.content %></textarea>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label for="photo" class="form-label fw-semibold">Replace Cover Photo <span class="text-muted small">(optional)</span></label>
+                                        <input type="file" id="photo" class="form-control py-3" name="photo" accept="image/*" />
+                                    </div>
+
+                                    <div class="d-flex flex-column flex-sm-row gap-2">
+                                        <button type="submit" class="btn btn-brand flex-grow-1">
+                                            <i class="bi bi-check2-circle me-2"></i>Save Changes
+                                        </button>
+                                        <a href="/posts" class="btn btn-outline-brand px-4">Cancel</a>
+                                    </div>
+                                </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    </body>
+
+    </html>

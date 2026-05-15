@@ -1,0 +1,258 @@
+<%- include('../partials/header') %>
+
+    <main class="py-4 py-md-5">
+        <section class="container">
+            <div class="feed-layout">
+                <aside class="feed-sidebar d-none d-lg-block">
+                    <div class="feed-panel p-3">
+                        <a href="/" class="feed-nav-item">
+                            <span class="icon-box"><i class="bi bi-house"></i></span>
+                            Home
+                        </a>
+                        <a href="/users/profile" class="feed-nav-item">
+                            <span class="icon-box"><i class="bi bi-person-circle"></i></span>
+                            Profile
+                        </a>
+                        <a href="/posts/create" class="feed-nav-item">
+                            <span class="icon-box"><i class="bi bi-plus-circle"></i></span>
+                            Create Post
+                        </a>
+                    </div>
+                </aside>
+
+                <div>
+                    <div class="feed-panel p-3 p-sm-4 mb-3">
+                        <div class="d-flex align-items-center justify-content-between gap-3">
+                            <div>
+                                <span class="section-label">Newsfeed</span>
+                                <h1 class="fw-bold mb-1">Posts</h1>
+                                <p class="text-muted small mb-0">Latest updates from the community.</p>
+                            </div>
+                            <a href="/posts/create" class="btn btn-brand flex-shrink-0">
+                                <i class="bi bi-plus-circle me-2"></i>Post
+                            </a>
+                        </div>
+                    </div>
+
+                    <% if (typeof error !== 'undefined' && error) { %>
+                        <div class="alert alert-warning d-flex align-items-center" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <div><%= error %></div>
+                        </div>
+                        <% } %>
+
+                            <% if (!posts || posts.length === 0) { %>
+                                <div class="feed-card p-5 text-center">
+                                    <span class="icon-box mb-3"><i class="bi bi-journal-plus fs-5"></i></span>
+                                    <h4 class="fw-bold">No posts yet</h4>
+                                    <p class="text-muted mb-4">Start the timeline with the first post.</p>
+                                    <a href="/posts/create" class="btn btn-brand">
+                                        <i class="bi bi-plus-circle me-2"></i>Create Post
+                                    </a>
+                                </div>
+                                <% } else { %>
+                                    <div class="d-flex flex-column gap-3">
+                                        <% posts.forEach(post => {
+                                            const authorName = post.author || 'Unknown author';
+                                            const authorInitial = authorName.charAt(0).toUpperCase();
+                                            const isOwner = typeof currentUserId !== 'undefined' && String(post.user_id) === String(currentUserId);
+                                        %>
+                                            <article class="feed-card" id="post-<%= post.id %>">
+                                                <div class="p-3 p-sm-4">
+                                                    <div class="d-flex align-items-start justify-content-between gap-3">
+                                                        <div class="d-flex align-items-center gap-2 min-w-0">
+                                                            <% if (post.author_photo) { %>
+                                                                <img src="/upload/<%= post.author_photo %>" alt="<%= authorName %>" class="feed-author-photo">
+                                                                <% } else { %>
+                                                                    <span class="feed-author-fallback"><%= authorInitial %></span>
+                                                                    <% } %>
+                                                                        <div>
+                                                                            <h6 class="fw-bold mb-0"><%= authorName %></h6>
+                                                                            <div class="article-meta">
+                                                                                <i class="bi bi-clock me-1"></i>
+                                                                                <%= post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Just now' %>
+                                                                            </div>
+                                                                        </div>
+                                                        </div>
+
+                                                        <% if (isOwner) { %>
+                                                            <div class="dropdown">
+                                                                <button class="btn btn-outline-brand btn-sm px-2 py-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Post options">
+                                                                    <i class="bi bi-three-dots"></i>
+                                                                </button>
+                                                                <ul class="dropdown-menu dropdown-menu-end">
+                                                                    <li><a class="dropdown-item" href="/posts/edit/<%= post.id %>"><i class="bi bi-pencil me-2"></i>Edit</a></li>
+                                                                    <li>
+                                                                        <form action="/posts/delete/<%= post.id %>" method="POST">
+                                                                            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Delete</button>
+                                                                        </form>
+                                                                    </li>
+                                                                </ul>
+                                                            </div>
+                                                            <% } %>
+                                                    </div>
+
+                                                    <h4 class="fw-bold mt-3 mb-2"><%= post.title %></h4>
+                                                    <p class="feed-content mb-0"><%= post.content %></p>
+                                                </div>
+
+                                                <% if (post.photo) { %>
+                                                    <img src="/upload/<%= post.photo %>" alt="<%= post.title %>" class="feed-image">
+                                                    <% } else { %>
+                                                        <div class="feed-image-empty">
+                                                            <span class="icon-box" style="width:56px;height:56px;"><i class="bi bi-image fs-4"></i></span>
+                                                        </div>
+                                                        <% } %>
+
+                                                            <div class="reaction-strip">
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <span class="reaction-stack" aria-hidden="true">
+                                                                        <span class="reaction-badge"><i class="bi bi-hand-thumbs-up-fill"></i></span>
+                                                                        <span class="reaction-badge" style="background:#ef4444;"><i class="bi bi-heart-fill"></i></span>
+                                                                    </span>
+                                                                    <span data-reaction-count>0 reactions</span>
+                                                                </div>
+                                                                <div>
+                                                                    <span data-comment-count>0 comments</span>
+                                                                    <span class="mx-1">/</span>
+                                                                    <span data-share-count>0 shares</span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="p-2 border-top">
+                                                                <div class="d-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+                                                                    <button type="button" class="feed-action" data-reaction-button>
+                                                                        <i class="bi bi-hand-thumbs-up me-1"></i><span>React</span>
+                                                                    </button>
+                                                                    <button type="button" class="feed-action" data-comment-toggle>
+                                                                        <i class="bi bi-chat-left me-1"></i><span>Comment</span>
+                                                                    </button>
+                                                                    <button type="button" class="feed-action" data-share-button data-share-url="/posts#post-<%= post.id %>">
+                                                                        <i class="bi bi-share me-1"></i><span>Share</span>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="comment-drawer" data-comment-drawer>
+                                                                <div class="comment-preview" data-comment-preview></div>
+                                                                <div class="d-flex align-items-start gap-2">
+                                                                    <% if (post.author_photo) { %>
+                                                                        <img src="/upload/<%= post.author_photo %>" alt="<%= authorName %>" class="feed-author-photo" style="width:36px;height:36px;flex-basis:36px;">
+                                                                        <% } else { %>
+                                                                            <span class="feed-author-fallback" style="width:36px;height:36px;flex-basis:36px;font-size:0.9rem;"><%= authorInitial %></span>
+                                                                            <% } %>
+                                                                                <div class="flex-grow-1">
+                                                                                    <textarea class="form-control comment-input" rows="1" placeholder="Write a comment..." data-comment-input></textarea>
+                                                                                    <div class="d-flex justify-content-between align-items-center gap-2 mt-2">
+                                                                                        <span class="share-status" data-share-status></span>
+                                                                                        <button type="button" class="btn btn-brand btn-sm" data-comment-submit>
+                                                                                            <i class="bi bi-send me-1"></i>Post
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </div>
+                                                                </div>
+                                                            </div>
+                                            </article>
+                                            <% }) %>
+                                    </div>
+                                    <% } %>
+                </div>
+
+                <aside class="feed-sidebar feed-sidebar-right">
+                    <div class="feed-panel p-4 mb-3">
+                        <span class="section-label">Comfort next</span>
+                        <h5 class="fw-bold mt-2">Polish checklist</h5>
+                        <p class="text-muted small mb-3">Small features that make the project feel complete.</p>
+                        <div class="d-flex flex-column gap-2 small text-muted">
+                            <div><i class="bi bi-check-circle text-primary me-2"></i>Mobile-first feed layout</div>
+                            <div><i class="bi bi-check-circle text-primary me-2"></i>Owner-only edit/delete</div>
+                            <div><i class="bi bi-circle me-2"></i>Comments</div>
+                            <div><i class="bi bi-circle me-2"></i>Likes</div>
+                            <div><i class="bi bi-circle me-2"></i>Search posts</div>
+                        </div>
+                    </div>
+                    <div class="feed-panel p-4">
+                        <span class="section-label">Tip</span>
+                        <p class="text-muted small mt-2 mb-0">Keep actions close to each post and avoid showing controls users cannot use.</p>
+                    </div>
+                </aside>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.querySelectorAll('.feed-card').forEach((card) => {
+            const reactionButton = card.querySelector('[data-reaction-button]');
+            const reactionCount = card.querySelector('[data-reaction-count]');
+            const commentToggle = card.querySelector('[data-comment-toggle]');
+            const commentDrawer = card.querySelector('[data-comment-drawer]');
+            const commentInput = card.querySelector('[data-comment-input]');
+            const commentSubmit = card.querySelector('[data-comment-submit]');
+            const commentPreview = card.querySelector('[data-comment-preview]');
+            const commentCount = card.querySelector('[data-comment-count]');
+            const shareButton = card.querySelector('[data-share-button]');
+            const shareCount = card.querySelector('[data-share-count]');
+            const shareStatus = card.querySelector('[data-share-status]');
+
+            let reacted = false;
+            let reactions = 0;
+            let comments = 0;
+            let shares = 0;
+
+            const pluralize = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
+
+            reactionButton?.addEventListener('click', () => {
+                reacted = !reacted;
+                reactions += reacted ? 1 : -1;
+                reactionButton.classList.toggle('is-active', reacted);
+                reactionButton.querySelector('span').textContent = reacted ? 'Reacted' : 'React';
+                reactionButton.querySelector('i').className = reacted ? 'bi bi-hand-thumbs-up-fill me-1' : 'bi bi-hand-thumbs-up me-1';
+                reactionCount.textContent = pluralize(reactions, 'reaction');
+            });
+
+            commentToggle?.addEventListener('click', () => {
+                commentDrawer.classList.toggle('is-open');
+                commentToggle.classList.toggle('is-active', commentDrawer.classList.contains('is-open'));
+                if (commentDrawer.classList.contains('is-open')) {
+                    commentInput.focus();
+                }
+            });
+
+            commentSubmit?.addEventListener('click', () => {
+                const comment = commentInput.value.trim();
+                if (!comment) {
+                    commentInput.focus();
+                    return;
+                }
+
+                comments += 1;
+                commentPreview.textContent = comment;
+                commentPreview.classList.add('has-comment');
+                commentInput.value = '';
+                commentCount.textContent = pluralize(comments, 'comment');
+            });
+
+            shareButton?.addEventListener('click', async() => {
+                const shareUrl = `${window.location.origin}${shareButton.dataset.shareUrl}`;
+
+                try {
+                    await navigator.clipboard.writeText(shareUrl);
+                    shares += 1;
+                    shareCount.textContent = pluralize(shares, 'share');
+                    shareButton.classList.add('is-active');
+                    shareStatus.textContent = 'Link copied';
+                    setTimeout(() => {
+                        shareStatus.textContent = '';
+                        shareButton.classList.remove('is-active');
+                    }, 1800);
+                } catch (_error) {
+                    shareStatus.textContent = shareUrl;
+                }
+            });
+        });
+    </script>
+
+    </body>
+
+    </html>

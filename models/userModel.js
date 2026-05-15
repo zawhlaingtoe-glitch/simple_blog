@@ -2,6 +2,16 @@ const db = require("../config/database");
 const bcrypt = require("bcrypt");
 
 class User {
+    static async ensureProfilePhotoColumn() {
+        try {
+            await db.query("ALTER TABLE USERS ADD COLUMN profile_photo VARCHAR(255) NULL");
+        } catch (error) {
+            if (error.code !== "ER_DUP_FIELDNAME") {
+                throw error;
+            }
+        }
+    }
+
     static async findALL() {
         try {
             const [users] = await db.query("SELECT * FROM USERS");
@@ -69,16 +79,35 @@ class User {
             throw error
         }
     }
-    static async updateUser(id, username, email, password = null) {
+    static async updateUser(id, username, email, password = null, profilePhoto = null) {
     try {
+        if (profilePhoto) {
+            await User.ensureProfilePhotoColumn();
+        }
 
-        if (password) {
+        if (password && profilePhoto) {
+
+            const hashedPassword = await bcrypt.hash(password, 10);
+
+            await db.query(
+                "UPDATE USERS SET username = ?, email = ?, password = ?, profile_photo = ? WHERE id = ?",
+                [username, email, hashedPassword, profilePhoto, id]
+            );
+
+        } else if (password) {
 
             const hashedPassword = await bcrypt.hash(password, 10);
 
             await db.query(
                 "UPDATE USERS SET username = ?, email = ?, password = ? WHERE id = ?",
                 [username, email, hashedPassword, id]
+            );
+
+        } else if (profilePhoto) {
+
+            await db.query(
+                "UPDATE USERS SET username = ?, email = ?, profile_photo = ? WHERE id = ?",
+                [username, email, profilePhoto, id]
             );
 
         } else {
