@@ -1,5 +1,6 @@
 const Post = require("../models/postModel");
 const User = require("../models/userModel");
+const Social = require("../models/socialModel");
 const path = require("path");
 const multer = require("multer")
 const jwt = require("jsonwebtoken");
@@ -40,8 +41,9 @@ exports.index = async(req, res) => {
     try {
 
 
-        const posts = await Post.findAll();
-        console.log(posts.length)
+        const currentUserId = getCurrentUserId(req);
+        const posts = await Social.attachToPosts(await Post.findAll(), currentUserId);
+        const currentUser = currentUserId ? await User.findById(currentUserId) : null;
         const messages = {
             not_owner: "You can only delete your own posts.",
             not_found: "That post was not found."
@@ -50,7 +52,8 @@ exports.index = async(req, res) => {
         res.render("posts/postlist", {
             posts: posts || [],
             title: "Post List",
-            currentUserId: getCurrentUserId(req),
+            currentUserId,
+            currentUser,
             error: messages[req.query.error] || null
         });
     } catch (error) {
@@ -206,6 +209,73 @@ exports.updatePost = async(req, res) => {
         }
     });
 }
+
+exports.toggleReaction = async(req, res) => {
+    try {
+        const post = await Post.findByid(req.params.id);
+        if (!post) {
+            return res.status(404).json({ status: "Fail!", message: "Post not found." });
+        }
+
+        const result = await Social.toggleReaction(req.params.id, req.user.id, req.body.reaction_type || "like");
+        const counts = await Social.countsForPost(req.params.id);
+
+        return res.status(200).json({
+            status: "Success!",
+            reacted: result.reacted,
+            counts
+        });
+    } catch (error) {
+        console.error("Reaction error:", error);
+        return res.status(500).json({ status: "Fail!", message: "Internal Server Error!" });
+    }
+};
+
+exports.createComment = async(req, res) => {
+    try {
+        const { content } = req.body;
+        if (!content || !content.trim()) {
+            return res.status(400).json({ status: "Fail!", message: "Comment cannot be empty." });
+        }
+
+        const post = await Post.findByid(req.params.id);
+        if (!post) {
+            return res.status(404).json({ status: "Fail!", message: "Post not found." });
+        }
+
+        const comment = await Social.createComment(req.params.id, req.user.id, content.trim());
+        const counts = await Social.countsForPost(req.params.id);
+
+        return res.status(201).json({
+            status: "Success!",
+            comment,
+            counts
+        });
+    } catch (error) {
+        console.error("Comment error:", error);
+        return res.status(500).json({ status: "Fail!", message: "Internal Server Error!" });
+    }
+};
+
+exports.createShare = async(req, res) => {
+    try {
+        const post = await Post.findByid(req.params.id);
+        if (!post) {
+            return res.status(404).json({ status: "Fail!", message: "Post not found." });
+        }
+
+        await Social.createShare(req.params.id, req.user.id);
+        const counts = await Social.countsForPost(req.params.id);
+
+        return res.status(201).json({
+            status: "Success!",
+            counts
+        });
+    } catch (error) {
+        console.error("Share error:", error);
+        return res.status(500).json({ status: "Fail!", message: "Internal Server Error!" });
+    }
+};
 
 exports.deletePost = async(req, res) => {
     try {

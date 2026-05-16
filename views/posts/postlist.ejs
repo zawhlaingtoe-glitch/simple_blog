@@ -56,8 +56,11 @@
                                             const authorName = post.author || 'Unknown author';
                                             const authorInitial = authorName.charAt(0).toUpperCase();
                                             const isOwner = typeof currentUserId !== 'undefined' && String(post.user_id) === String(currentUserId);
+                                            const viewerName = currentUser && currentUser.username ? currentUser.username : 'You';
+                                            const viewerInitial = viewerName.charAt(0).toUpperCase();
+                                            const viewerPhoto = currentUser && currentUser.profile_photo ? currentUser.profile_photo : null;
                                         %>
-                                            <article class="feed-card" id="post-<%= post.id %>">
+                                            <article class="feed-card" id="post-<%= post.id %>" data-post-id="<%= post.id %>">
                                                 <div class="p-3 p-sm-4">
                                                     <div class="d-flex align-items-start justify-content-between gap-3">
                                                         <div class="d-flex align-items-center gap-2 min-w-0">
@@ -110,19 +113,28 @@
                                                                         <span class="reaction-badge"><i class="bi bi-hand-thumbs-up-fill"></i></span>
                                                                         <span class="reaction-badge" style="background:#ef4444;"><i class="bi bi-heart-fill"></i></span>
                                                                     </span>
-                                                                    <span data-reaction-count>0 reactions</span>
+                                                                    <span>
+                                                                        <span data-reaction-count><%= post.reaction_count || 0 %> <%= Number(post.reaction_count) === 1 ? 'reaction' : 'reactions' %></span>
+                                                                        <% if (post.reaction_users && post.reaction_users.length > 0) { %>
+                                                                            <span class="d-block small" data-reaction-users>
+                                                                                Liked by <%= post.reaction_users.map(user => user.author).join(', ') %>
+                                                                            </span>
+                                                                            <% } else { %>
+                                                                                <span class="d-block small" data-reaction-users></span>
+                                                                                <% } %>
+                                                                    </span>
                                                                 </div>
                                                                 <div>
-                                                                    <span data-comment-count>0 comments</span>
+                                                                    <span data-comment-count><%= post.comment_count || 0 %> <%= Number(post.comment_count) === 1 ? 'comment' : 'comments' %></span>
                                                                     <span class="mx-1">/</span>
-                                                                    <span data-share-count>0 shares</span>
+                                                                    <span data-share-count><%= post.share_count || 0 %> <%= Number(post.share_count) === 1 ? 'share' : 'shares' %></span>
                                                                 </div>
                                                             </div>
 
                                                             <div class="p-2 border-top">
                                                                 <div class="d-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
-                                                                    <button type="button" class="feed-action" data-reaction-button>
-                                                                        <i class="bi bi-hand-thumbs-up me-1"></i><span>React</span>
+                                                                    <button type="button" class="feed-action <%= post.current_user_reacted ? 'is-active' : '' %>" data-reaction-button data-reacted="<%= post.current_user_reacted ? 'true' : 'false' %>">
+                                                                        <i class="bi <%= post.current_user_reacted ? 'bi-hand-thumbs-up-fill' : 'bi-hand-thumbs-up' %> me-1"></i><span><%= post.current_user_reacted ? 'Reacted' : 'React' %></span>
                                                                     </button>
                                                                     <button type="button" class="feed-action" data-comment-toggle>
                                                                         <i class="bi bi-chat-left me-1"></i><span>Comment</span>
@@ -134,12 +146,33 @@
                                                             </div>
 
                                                             <div class="comment-drawer" data-comment-drawer>
-                                                                <div class="comment-preview" data-comment-preview></div>
+                                                                <div data-comment-list>
+                                                                    <% if (post.comments && post.comments.length > 0) { %>
+                                                                        <% post.comments.forEach(comment => {
+                                                                            const commentAuthor = comment.author || 'User';
+                                                                            const commentInitial = commentAuthor.charAt(0).toUpperCase();
+                                                                        %>
+                                                                            <div class="comment-preview has-comment">
+                                                                                <div class="d-flex align-items-start gap-2">
+                                                                                    <% if (comment.author_photo) { %>
+                                                                                        <img src="/upload/<%= comment.author_photo %>" alt="<%= commentAuthor %>" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">
+                                                                                        <% } else { %>
+                                                                                            <span class="feed-author-fallback" style="width:30px;height:30px;flex-basis:30px;font-size:0.78rem;"><%= commentInitial %></span>
+                                                                                            <% } %>
+                                                                                                <div>
+                                                                                                    <div class="fw-bold small"><%= commentAuthor %></div>
+                                                                                                    <div><%= comment.content %></div>
+                                                                                                </div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <% }) %>
+                                                                                <% } %>
+                                                                </div>
                                                                 <div class="d-flex align-items-start gap-2">
-                                                                    <% if (post.author_photo) { %>
-                                                                        <img src="/upload/<%= post.author_photo %>" alt="<%= authorName %>" class="feed-author-photo" style="width:36px;height:36px;flex-basis:36px;">
+                                                                    <% if (viewerPhoto) { %>
+                                                                        <img src="/upload/<%= viewerPhoto %>" alt="<%= viewerName %>" class="feed-author-photo" style="width:36px;height:36px;flex-basis:36px;">
                                                                         <% } else { %>
-                                                                            <span class="feed-author-fallback" style="width:36px;height:36px;flex-basis:36px;font-size:0.9rem;"><%= authorInitial %></span>
+                                                                            <span class="feed-author-fallback" style="width:36px;height:36px;flex-basis:36px;font-size:0.9rem;"><%= viewerInitial %></span>
                                                                             <% } %>
                                                                                 <div class="flex-grow-1">
                                                                                     <textarea class="form-control comment-input" rows="1" placeholder="Write a comment..." data-comment-input></textarea>
@@ -183,32 +216,63 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.querySelectorAll('.feed-card').forEach((card) => {
+            const postId = card.dataset.postId;
             const reactionButton = card.querySelector('[data-reaction-button]');
             const reactionCount = card.querySelector('[data-reaction-count]');
+            const reactionUsers = card.querySelector('[data-reaction-users]');
             const commentToggle = card.querySelector('[data-comment-toggle]');
             const commentDrawer = card.querySelector('[data-comment-drawer]');
             const commentInput = card.querySelector('[data-comment-input]');
             const commentSubmit = card.querySelector('[data-comment-submit]');
-            const commentPreview = card.querySelector('[data-comment-preview]');
+            const commentList = card.querySelector('[data-comment-list]');
             const commentCount = card.querySelector('[data-comment-count]');
             const shareButton = card.querySelector('[data-share-button]');
             const shareCount = card.querySelector('[data-share-count]');
             const shareStatus = card.querySelector('[data-share-status]');
 
-            let reacted = false;
-            let reactions = 0;
-            let comments = 0;
-            let shares = 0;
-
             const pluralize = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
+            const goLogin = () => {
+                window.location.href = '/users/login';
+            };
+            const postJson = async(url, body = {}) => {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
 
-            reactionButton?.addEventListener('click', () => {
-                reacted = !reacted;
-                reactions += reacted ? 1 : -1;
-                reactionButton.classList.toggle('is-active', reacted);
-                reactionButton.querySelector('span').textContent = reacted ? 'Reacted' : 'React';
-                reactionButton.querySelector('i').className = reacted ? 'bi bi-hand-thumbs-up-fill me-1' : 'bi bi-hand-thumbs-up me-1';
-                reactionCount.textContent = pluralize(reactions, 'reaction');
+                if (response.redirected || response.status === 401 || response.status === 403) {
+                    goLogin();
+                    return null;
+                }
+
+                return response.json();
+            };
+
+            const updateCounts = (counts) => {
+                if (!counts) return;
+                reactionCount.textContent = pluralize(Number(counts.reactions || 0), 'reaction');
+                commentCount.textContent = pluralize(Number(counts.comments || 0), 'comment');
+                shareCount.textContent = pluralize(Number(counts.shares || 0), 'share');
+                if (reactionUsers && counts.reactionUsers) {
+                    reactionUsers.textContent = counts.reactionUsers.length > 0 ?
+                        `Liked by ${counts.reactionUsers.map((user) => user.author).join(', ')}` :
+                        '';
+                }
+            };
+
+            reactionButton?.addEventListener('click', async() => {
+                const data = await postJson(`/posts/${postId}/reactions`, { reaction_type: 'like' });
+                if (!data) return;
+
+                reactionButton.classList.toggle('is-active', data.reacted);
+                reactionButton.dataset.reacted = data.reacted ? 'true' : 'false';
+                reactionButton.querySelector('span').textContent = data.reacted ? 'Reacted' : 'React';
+                reactionButton.querySelector('i').className = data.reacted ? 'bi bi-hand-thumbs-up-fill me-1' : 'bi bi-hand-thumbs-up me-1';
+                updateCounts(data.counts);
             });
 
             commentToggle?.addEventListener('click', () => {
@@ -219,27 +283,47 @@
                 }
             });
 
-            commentSubmit?.addEventListener('click', () => {
+            commentSubmit?.addEventListener('click', async() => {
                 const comment = commentInput.value.trim();
                 if (!comment) {
                     commentInput.focus();
                     return;
                 }
 
-                comments += 1;
-                commentPreview.textContent = comment;
-                commentPreview.classList.add('has-comment');
+                const data = await postJson(`/posts/${postId}/comments`, { content: comment });
+                if (!data) return;
+
+                const commentAuthor = data.comment.author || 'User';
+                const commentInitial = commentAuthor.charAt(0).toUpperCase();
+                const commentItem = document.createElement('div');
+                commentItem.className = 'comment-preview has-comment';
+                commentItem.innerHTML = `
+                    <div class="d-flex align-items-start gap-2">
+                        ${data.comment.author_photo
+                            ? `<img src="/upload/${data.comment.author_photo}" alt="${commentAuthor}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">`
+                            : `<span class="feed-author-fallback" style="width:30px;height:30px;flex-basis:30px;font-size:0.78rem;">${commentInitial}</span>`
+                        }
+                        <div>
+                            <div class="fw-bold small"></div>
+                            <div></div>
+                        </div>
+                    </div>
+                `;
+                commentItem.querySelector('.fw-bold').textContent = commentAuthor;
+                commentItem.querySelector('.fw-bold + div').textContent = data.comment.content;
+                commentList.appendChild(commentItem);
                 commentInput.value = '';
-                commentCount.textContent = pluralize(comments, 'comment');
+                updateCounts(data.counts);
             });
 
             shareButton?.addEventListener('click', async() => {
                 const shareUrl = `${window.location.origin}${shareButton.dataset.shareUrl}`;
+                const data = await postJson(`/posts/${postId}/shares`);
+                if (!data) return;
 
                 try {
                     await navigator.clipboard.writeText(shareUrl);
-                    shares += 1;
-                    shareCount.textContent = pluralize(shares, 'share');
+                    updateCounts(data.counts);
                     shareButton.classList.add('is-active');
                     shareStatus.textContent = 'Link copied';
                     setTimeout(() => {
