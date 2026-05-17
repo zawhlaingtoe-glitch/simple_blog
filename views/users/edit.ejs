@@ -1,0 +1,41 @@
+<%- include('../partials/header') %>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-md-8">
+            <div class="card p-4">
+                <div class="text-center mb-4">
+                    <div style="font-size:2rem;">✏️</div>
+                    <h2 class="fw-bold mt-2" style="color:#1a4a35;">Edit User</h2>
+                </div>
+
+                <% if (error) { %>
+                    <div class="alert alert-danger d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <%= error %>
+                    </div>
+                <% } %>
+
+                <form action="/users/update/<%= user.id %>" method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label fw-500">Full Name</label>
+                        <input type="text" id="name" name="name" value="<%= user.name %>" placeholder="Name..." class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label fw-500">Email</label>
+                        <input type="email" id="email" name="email" value="<%= user.email %>" placeholder="Email..." class="form-control" required />
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-primary flex-grow-1 py-2">
+                            <i class="bi bi-check-circle me-1"></i>Update
+                        </button>
+                        <a href="/users" class="btn btn-outline-secondary px-4">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

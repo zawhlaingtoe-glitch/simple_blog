@@ -1,19 +1,15 @@
-# Node modules (အလွန်ကြီးမားသဖြင့် မတင်ရပါ)
+
 node_modules/
 
-# Environment variables (လျှို့ဝှက်ချက်များ၊ အရေးကြီးဆုံး!)
+
 .env
 
-# Logs
 
-# System files (macOS/Windows)
 .DS_Store
 Thumbs.db
 
-# Database (အကယ်၍ local SQLite သုံးနေပါက)
+
 *.sqlite
 *.sqlite-journal
 
-# Uploaded files (သင့် Server ပေါ်ရှိ ဓာတ်ပုံဖိုဒါများ)
-# အကယ်၍ uploads folder ထဲတွင် အမြဲပြောင်းလဲနေသော ပုံများရှိလျှင် ဤနေရာတွင် ထည့်ပါ
 uploads/
