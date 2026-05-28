@@ -8,23 +8,25 @@ const heroPost = latestPosts[0];
 <main>
     <section class="hero-shell">
         <div class="container">
-            <div class="row align-items-center g-5">
-                <div class="col-lg-7">
-                    <span class="section-label d-inline-block mb-3">Developer stories and practical notes</span>
-                    <h1 class="hero-title mb-4">Build cleaner apps, one post at a time.</h1>
-                    <p class="hero-copy mb-4">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-7 animate-fade-in-up">
+                    <span class="section-label d-inline-block mb-2">Developer stories and practical notes</span>
+                    <h1 class="hero-title mb-3">Build cleaner apps, one post at a time.</h1>
+                    <p class="hero-copy mb-3">
                         A focused space for sharing backend lessons, frontend patterns, debugging stories, and project updates from the TECHBLOG community.
                     </p>
-                    <div class="d-flex flex-column flex-sm-row gap-3">
+                    <div class="d-flex flex-column flex-sm-row gap-2">
                         <a href="/posts" class="btn btn-brand"><i class="bi bi-journal-text me-2"></i>Explore Posts</a>
-                        <a href="/users/register" class="btn btn-outline-brand"><i class="bi bi-person-plus me-2"></i>Join Community</a>
+                        <% if (!locals.isLoggedIn) { %>
+                            <a href="/users/register" class="btn btn-outline-brand"><i class="bi bi-person-plus me-2"></i>Join Community</a>
+                        <% } %>
                     </div>
                 </div>
 
-                <div class="col-lg-5">
+                <div class="col-lg-5 animate-fade-in-up delay-200">
                     <div class="hero-panel">
-                        <div class="code-window p-4">
-                            <div class="d-flex gap-2 mb-4">
+                        <div class="code-window p-3 p-md-4">
+                            <div class="d-flex gap-2 mb-3">
                                 <span class="window-dot"></span>
                                 <span class="window-dot"></span>
                                 <span class="window-dot"></span>
@@ -36,17 +38,17 @@ const heroPost = latestPosts[0];
                             <div class="code-line">  source: "database"</div>
                             <div class="code-line">};</div>
 
-                            <div class="row g-0 metric-box mt-4 pt-4 text-white">
+                            <div class="row g-0 metric-box mt-3 pt-3 text-white">
                                 <div class="col-4">
-                                    <strong class="d-block fs-4"><%= latestPosts.length %></strong>
+                                    <strong class="d-block fs-5"><%= latestPosts.length %></strong>
                                     <span class="text-white-50 small">Shown</span>
                                 </div>
                                 <div class="col-4">
-                                    <strong class="d-block fs-4"><%= latestPosts.filter(post => post.photo).length %></strong>
+                                    <strong class="d-block fs-5"><%= latestPosts.filter(post => post.photo).length %></strong>
                                     <span class="text-white-50 small">Photos</span>
                                 </div>
                                 <div class="col-4">
-                                    <strong class="d-block fs-4"><%= new Set(latestPosts.map(post => post.author)).size %></strong>
+                                    <strong class="d-block fs-5"><%= new Set(latestPosts.map(post => post.author)).size %></strong>
                                     <span class="text-white-50 small">Authors</span>
                                 </div>
                             </div>
@@ -57,36 +59,36 @@ const heroPost = latestPosts[0];
         </div>
     </section>
 
-    <section class="py-5">
+    <section class="py-4">
         <div class="container">
             <div class="row align-items-end mb-4 g-3">
-                <div class="col-lg-7">
+                <div class="col-lg-7 animate-fade-in-up">
                     <span class="section-label">Why read here</span>
                     <h2 class="fw-bold mt-2 mb-0">Everything stays practical.</h2>
                 </div>
-                <div class="col-lg-5 text-lg-end">
+                <div class="col-lg-5 text-lg-end animate-fade-in-up delay-100">
                     <p class="text-muted mb-0">Short guides, real project context, and ideas you can use in your next commit.</p>
                 </div>
             </div>
 
-            <div class="row g-4">
-                <div class="col-md-4">
-                    <div class="feature-card p-4">
-                        <span class="icon-box mb-3"><i class="bi bi-terminal fs-5"></i></span>
+            <div class="row g-3">
+                <div class="col-md-4 animate-fade-in-up">
+                    <div class="feature-card p-3">
+                        <span class="icon-box mb-2"><i class="bi bi-terminal"></i></span>
                         <h5 class="fw-bold">Code-first posts</h5>
                         <p class="text-muted mb-0">Examples are written for builders, with enough detail to copy the idea into a real app.</p>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="feature-card p-4">
-                        <span class="icon-box mb-3"><i class="bi bi-lightning-charge fs-5"></i></span>
+                <div class="col-md-4 animate-fade-in-up delay-100">
+                    <div class="feature-card p-3">
+                        <span class="icon-box mb-2"><i class="bi bi-lightning-charge"></i></span>
                         <h5 class="fw-bold">Fast lessons</h5>
                         <p class="text-muted mb-0">Quick reads for routing, models, auth, validation, deployment, and small design improvements.</p>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="feature-card p-4">
-                        <span class="icon-box mb-3"><i class="bi bi-chat-square-text fs-5"></i></span>
+                <div class="col-md-4 animate-fade-in-up delay-200">
+                    <div class="feature-card p-3">
+                        <span class="icon-box mb-2"><i class="bi bi-chat-square-text"></i></span>
                         <h5 class="fw-bold">Community voice</h5>
                         <p class="text-muted mb-0">Members can register, write, and keep the knowledge base growing with fresh notes.</p>
                     </div>
@@ -95,51 +97,58 @@ const heroPost = latestPosts[0];
         </div>
     </section>
 
-    <section class="py-5">
+    <section class="py-4">
         <div class="container">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4">
-                <div>
+                <div class="animate-fade-in-up">
                     <span class="section-label">Latest posts</span>
                     <h2 class="fw-bold mt-2 mb-0">Fresh from real users.</h2>
                 </div>
-                <a href="/posts" class="btn btn-outline-brand"><i class="bi bi-arrow-right me-2"></i>View All Posts</a>
+                <a href="/posts" class="btn btn-outline-brand animate-fade-in-up delay-100"><i class="bi bi-arrow-right me-2"></i>View All Posts</a>
             </div>
 
             <% if (latestPosts.length === 0) { %>
-                <div class="hero-panel p-5 text-center">
+                <div class="hero-panel p-5 text-center animate-scale-in">
                     <span class="icon-box mb-3"><i class="bi bi-journal-plus fs-5"></i></span>
                     <h4 class="fw-bold">No posts yet</h4>
                     <p class="text-muted mb-4">Publish the first story and it will appear here.</p>
                     <a href="/posts/create" class="btn btn-brand"><i class="bi bi-plus-circle me-2"></i>Create Post</a>
                 </div>
                 <% } else { %>
-                    <div class="row g-4">
-                        <% latestPosts.forEach(post => { %>
-                            <div class="col-lg-4">
-                                <article class="article-card overflow-hidden d-flex flex-column">
-                                    <% if (post.photo) { %>
-                                        <img src="/upload/<%= post.photo %>" alt="<%= post.title %>" class="w-100" style="height:190px;object-fit:cover;">
+                    <div class="row g-3">
+                        <% latestPosts.forEach((post, index) => { 
+                            const delayClass = index === 0 ? '' : index === 1 ? 'delay-100' : 'delay-200';
+                        %>
+                            <div class="col-lg-4 animate-fade-in-up <%= delayClass %>">
+                                <article class="article-card smart-post-card overflow-hidden">
+                                    <div class="smart-post-media">
+                                        <% if (post.photo) { %>
+                                            <img src="/upload/<%= post.photo %>" alt="<%= post.title %>">
                                         <% } else { %>
-                                            <div class="d-flex align-items-center justify-content-center bg-light" style="height:190px;">
-                                                <span class="icon-box" style="width:56px;height:56px;"><i class="bi bi-image fs-4"></i></span>
+                                            <div class="h-100 d-flex align-items-center justify-content-center">
+                                                <span class="icon-box"><i class="bi bi-image"></i></span>
                                             </div>
+                                        <% } %>
+                                    </div>
+                                    <div class="smart-post-body">
+                                        <a class="tag align-self-start" href="/users/<%= post.user_id %>">
+                                            <% if (post.author_photo) { %>
+                                                <img src="/upload/<%= post.author_photo %>" alt="<%= post.author %>" class="me-2" style="width:18px;height:18px;border-radius:50%;object-fit:cover;">
                                             <% } %>
-                                            <div class="p-4 d-flex flex-column flex-grow-1">
-                                                <span class="tag mb-3">
-                                                    <% if (post.author_photo) { %>
-                                                        <img src="/upload/<%= post.author_photo %>" alt="<%= post.author %>" class="me-2" style="width:20px;height:20px;border-radius:50%;object-fit:cover;">
-                                                        <% } %>
-                                                            <%= post.author || 'Unknown author' %>
-                                                </span>
-                                                <h4 class="fw-bold mb-3"><a href="/posts"><%= post.title %></a></h4>
-                                                <p class="text-muted flex-grow-1" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">
-                                                    <%= post.content %>
-                                                </p>
-                                                <div class="article-meta">
-                                                    <i class="bi bi-calendar3 me-1"></i>
-                                                    <%= post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Just now' %>
-                                                </div>
-                                            </div>
+                                            <%= post.author || 'Unknown author' %>
+                                        </a>
+                                        <h4 class="fw-bold smart-post-title"><a href="/posts"><%= post.title %></a></h4>
+                                        <p class="smart-post-excerpt">
+                                            <%= post.content ? post.content.replace(/<[^>]*>/g, '') : '' %>
+                                        </p>
+                                        <div class="smart-post-footer">
+                                            <span class="article-meta">
+                                                <i class="bi bi-calendar3 me-1"></i>
+                                                <%= post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Just now' %>
+                                            </span>
+                                            <a href="/posts" class="btn btn-outline-brand btn-sm py-1 px-2">Read</a>
+                                        </div>
+                                    </div>
                                 </article>
                             </div>
                             <% }) %>
@@ -148,7 +157,7 @@ const heroPost = latestPosts[0];
         </div>
     </section>
 
-    <section class="py-5">
+    <section class="py-5 animate-scale-in">
         <div class="container">
             <div class="newsletter-panel p-4 p-md-5">
                 <div class="row align-items-center g-4">
@@ -158,8 +167,12 @@ const heroPost = latestPosts[0];
                         <p class="text-white-50 mb-0">Create an account and share what you learned while building your project.</p>
                     </div>
                     <div class="col-lg-5 text-lg-end">
-                        <a href="/users/register" class="btn btn-light fw-bold me-sm-2 mb-2 mb-sm-0"><i class="bi bi-pencil-square me-2"></i>Get Started</a>
-                        <a href="/users/login" class="btn btn-outline-light fw-bold"><i class="bi bi-box-arrow-in-right me-2"></i>Login</a>
+                        <% if (locals.isLoggedIn) { %>
+                            <a href="/posts/create" class="btn btn-light fw-bold"><i class="bi bi-plus-circle me-2"></i>Create Post</a>
+                        <% } else { %>
+                            <a href="/users/register" class="btn btn-light fw-bold me-sm-2 mb-2 mb-sm-0"><i class="bi bi-pencil-square me-2"></i>Get Started</a>
+                            <a href="/users/login" class="btn btn-outline-light fw-bold"><i class="bi bi-box-arrow-in-right me-2"></i>Login</a>
+                        <% } %>
                     </div>
                 </div>
             </div>

@@ -37,12 +37,24 @@ const getCurrentUserId = (req) => {
     }
 };
 
+const normalizeVisibility = (visibility) => visibility === "private" ? "private" : "public";
+
+const sanitizeContent = (content = "") => {
+    return String(content)
+        .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+        .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
+        .replace(/<(iframe|object|embed|link|meta)[\s\S]*?>/gi, "")
+        .replace(/\son\w+="[^"]*"/gi, "")
+        .replace(/\son\w+='[^']*'/gi, "")
+        .replace(/\s(href|src)=["']javascript:[^"']*["']/gi, "");
+};
+
 exports.index = async(req, res) => {
     try {
 
 
         const currentUserId = getCurrentUserId(req);
-        const posts = await Social.attachToPosts(await Post.findAll(), currentUserId);
+        const posts = await Social.attachToPosts(await Post.findAll(5, 0, currentUserId), currentUserId);
         const currentUser = currentUserId ? await User.findById(currentUserId) : null;
         const messages = {
             not_owner: "You can only delete your own posts.",
@@ -82,11 +94,11 @@ exports.create = async(req, res) => {
             return res.status(500).send("Error uploading photo");
         }
 
-        const { title, content } = req.body;
+        const { title, content, visibility } = req.body;
         const photo = req.file ? req.file.filename : null;
 
         try {
-            await Post.createPost(req.user.id, title, content, photo);
+            await Post.createPost(req.user.id, title, sanitizeContent(content), photo, normalizeVisibility(visibility));
             res.redirect("/posts");
         } catch (error) {
             console.error("Error creating post: ", error);
@@ -122,7 +134,9 @@ exports.showEditForm = async(req, res) => {
 exports.getUserPosts = async(req, res) => {
     try {
         const userId = req.params.userId;
-        const userPosts = await Post.findByUserId(userId);
+        const currentUserId = req.user?.id;
+        const includePrivate = String(currentUserId) === String(userId);
+        const userPosts = await Post.findByUserId(userId, includePrivate);
         if (userPosts.length === 0) {
             return res.status(400)
                 .json({
@@ -157,7 +171,7 @@ exports.updatePost = async(req, res) => {
         }
 
         const postId = req.params.id
-        const { title, content } = req.body;
+        const { title, content, visibility } = req.body;
         const userId = req.user.id;
         const photo = req.file ? req.file.filename : null
 
@@ -185,7 +199,7 @@ exports.updatePost = async(req, res) => {
                 })
             }
 
-            await Post.updatePost(postId, title, content, photo, userId)
+            await Post.updatePost(postId, title, sanitizeContent(content), photo, normalizeVisibility(visibility), userId)
             const updateDatabase = await Post.findByid(postId)
 
             if (req.accepts("html")) {
@@ -216,6 +230,9 @@ exports.toggleReaction = async(req, res) => {
         if (!post) {
             return res.status(404).json({ status: "Fail!", message: "Post not found." });
         }
+        if (post.visibility === 'private' && String(post.user_id) !== String(req.user.id)) {
+            return res.status(403).json({ status: "Fail!", message: "Access denied." });
+        }
 
         const result = await Social.toggleReaction(req.params.id, req.user.id, req.body.reaction_type || "like");
         const counts = await Social.countsForPost(req.params.id);
@@ -242,6 +259,9 @@ exports.createComment = async(req, res) => {
         if (!post) {
             return res.status(404).json({ status: "Fail!", message: "Post not found." });
         }
+        if (post.visibility === 'private' && String(post.user_id) !== String(req.user.id)) {
+            return res.status(403).json({ status: "Fail!", message: "Access denied." });
+        }
 
         const comment = await Social.createComment(req.params.id, req.user.id, content.trim());
         const counts = await Social.countsForPost(req.params.id);
@@ -263,12 +283,16 @@ exports.createShare = async(req, res) => {
         if (!post) {
             return res.status(404).json({ status: "Fail!", message: "Post not found." });
         }
+        if (post.visibility === 'private' && String(post.user_id) !== String(req.user.id)) {
+            return res.status(403).json({ status: "Fail!", message: "Access denied." });
+        }
 
         await Social.createShare(req.params.id, req.user.id);
         const counts = await Social.countsForPost(req.params.id);
 
         return res.status(201).json({
             status: "Success!",
+            message: "Shared to your profile.",
             counts
         });
     } catch (error) {

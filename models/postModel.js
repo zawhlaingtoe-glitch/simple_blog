@@ -1,6 +1,5 @@
 const db = require("../config/database");
 
-
 class Post {
     static async ensureAuthorPhotoColumn() {
         try {
@@ -12,26 +11,69 @@ class Post {
         }
     }
 
-    static async findAll(limit = 5, offset = 0) {
+    static async ensureVisibilityColumn() {
+        try {
+            await db.query("ALTER TABLE POSTS ADD COLUMN visibility VARCHAR(20) NOT NULL DEFAULT 'public'");
+        } catch (error) {
+            if (error.code !== "ER_DUP_FIELDNAME") {
+                throw error;
+            }
+        }
+    }
+
+    static async findAll(limit = 5, offset = 0, currentUserId = null) {
         try {
             await Post.ensureAuthorPhotoColumn();
-            const [rows] = await db.query("SELECT posts.*, username AS author, users.profile_photo AS author_photo FROM posts LEFT JOIN users ON posts.user_id = users.id ORDER BY posts.id DESC LIMIT ? OFFSET ?", [limit, offset]);
-            return rows
+            await Post.ensureVisibilityColumn();
+
+            let query = "";
+            let params = [];
+
+            if (currentUserId) {
+                query = `SELECT POSTS.*, username AS author, USERS.profile_photo AS author_photo 
+                         FROM POSTS 
+                         LEFT JOIN USERS ON POSTS.user_id = USERS.id 
+                         WHERE POSTS.visibility = 'public' OR POSTS.user_id = ? 
+                         ORDER BY POSTS.id DESC LIMIT ? OFFSET ?`;
+                params = [currentUserId, limit, offset];
+            } else {
+                query = `SELECT POSTS.*, username AS author, USERS.profile_photo AS author_photo 
+                         FROM POSTS 
+                         LEFT JOIN USERS ON POSTS.user_id = USERS.id 
+                         WHERE POSTS.visibility = 'public' 
+                         ORDER BY POSTS.id DESC LIMIT ? OFFSET ?`;
+                params = [limit, offset];
+            }
+
+            const [rows] = await db.query(query, params);
+            return rows;
         } catch (error) {
             console.error("Error fetching posts: ", error);
-            throw error
+            throw error;
         }
-
     }
-    static async findByUserId(userId) {
+
+    static async findByUserId(userId, includePrivate = false) {
         try {
-            //
             await Post.ensureAuthorPhotoColumn();
-            const [rows] = await db.query(
-                "SELECT posts.*, username AS author, users.profile_photo AS author_photo FROM posts JOIN users ON posts.user_id = users.id WHERE posts.user_id = ? ORDER BY posts.created_at DESC", [userId]
-            );
+            await Post.ensureVisibilityColumn();
 
+            let query = "";
+            if (includePrivate) {
+                query = `SELECT POSTS.*, username AS author, USERS.profile_photo AS author_photo 
+                         FROM POSTS 
+                         JOIN USERS ON POSTS.user_id = USERS.id 
+                         WHERE POSTS.user_id = ? 
+                         ORDER BY POSTS.created_at DESC`;
+            } else {
+                query = `SELECT POSTS.*, username AS author, USERS.profile_photo AS author_photo 
+                         FROM POSTS 
+                         JOIN USERS ON POSTS.user_id = USERS.id 
+                         WHERE POSTS.user_id = ? AND POSTS.visibility = 'public' 
+                         ORDER BY POSTS.created_at DESC`;
+            }
 
+            const [rows] = await db.query(query, [userId]);
             return rows;
         } catch (error) {
             console.error("Error fetching user's posts: ", error);
@@ -39,40 +81,49 @@ class Post {
         }
     }
 
-    static async createPost(userId, title, content, photo) {
+    static async createPost(userId, title, content, photo, visibility = 'public') {
         const currentTime = new Date();
         try {
-            const [rows] = await db.query("INSERT INTO POSTS(user_id,title,content,photo,created_at) VALUES(?,?,?,?,?)", [userId, title, content, photo, currentTime])
+            await Post.ensureVisibilityColumn();
+            const [rows] = await db.query(
+                "INSERT INTO POSTS(user_id,title,content,photo,visibility,created_at) VALUES(?,?,?,?,?,?)", 
+                [userId, title, content, photo, visibility, currentTime]
+            );
             console.log("Post created ID with: ", rows.insertId);
-            return rows.insertId
+            return rows.insertId;
         } catch (error) {
             console.error("Error creating posts: ", error);
-            throw error
+            throw error;
         }
-
     }
+
     static async findByid(id) {
         try {
             await Post.ensureAuthorPhotoColumn();
-            const [rows] = await db.query("SELECT posts.*, username AS author, users.profile_photo AS author_photo FROM posts JOIN users ON posts.user_id = users.id WHERE posts.id = ?", [id])
-            return rows[0]
+            await Post.ensureVisibilityColumn();
+            const [rows] = await db.query(
+                "SELECT POSTS.*, username AS author, USERS.profile_photo AS author_photo FROM POSTS JOIN USERS ON POSTS.user_id = USERS.id WHERE POSTS.id = ?", 
+                [id]
+            );
+            return rows[0];
         } catch (error) {
-            console.error("Error: ", error)
-            throw error
+            console.error("Error: ", error);
+            throw error;
         }
     }
 
-    static async updatePost(id, title, content, photo = null, userId) {
+    static async updatePost(id, title, content, photo = null, visibility = 'public', userId) {
         try {
+            await Post.ensureVisibilityColumn();
             if (photo) {
-
                 await db.query(
-                    "UPDATE posts SET title = ?, content = ?, photo = ? WHERE id = ? AND user_id = ?", [title, content, photo, id, userId]
+                    "UPDATE POSTS SET title = ?, content = ?, photo = ?, visibility = ? WHERE id = ? AND user_id = ?", 
+                    [title, content, photo, visibility, id, userId]
                 );
             } else {
-
                 await db.query(
-                    "UPDATE posts SET title = ?, content = ? WHERE id = ? AND user_id = ?", [title, content, id, userId]
+                    "UPDATE POSTS SET title = ?, content = ?, visibility = ? WHERE id = ? AND user_id = ?", 
+                    [title, content, visibility, id, userId]
                 );
             }
         } catch (error) {
@@ -83,11 +134,12 @@ class Post {
 
     static async deletePost(id) {
         try {
-            await db.query("DELETE FROM POSTS WHERE id=?", [id])
+            await db.query("DELETE FROM POSTS WHERE id=?", [id]);
         } catch (error) {
-            console.error("Error deleting the posts: ", error)
-            throw error
+            console.error("Error deleting the posts: ", error);
+            throw error;
         }
     }
-};
-module.exports = Post
+}
+
+module.exports = Post;

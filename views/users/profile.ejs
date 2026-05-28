@@ -6,7 +6,7 @@
     const profilePhoto = user && user.profile_photo ? user.profile_photo : null;
 %>
 
-        <main class="py-5">
+        <main class="py-4">
             <section class="container">
                 <% if (error) { %>
                     <div class="alert alert-danger d-flex align-items-center" role="alert">
@@ -26,20 +26,20 @@
                             </div>
                             <% } %>
 
-                                <div class="hero-panel overflow-hidden mb-4">
-                                    <div class="p-4 p-md-5 text-white" style="background: linear-gradient(135deg, #111827, #1d4ed8);">
+                                <div class="hero-panel overflow-hidden mb-3 animate-scale-in">
+                                    <div class="profile-summary-card p-3 p-md-4 text-white">
                                         <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-4">
-                                            <div class="d-flex align-items-end gap-3">
+                                            <div class="d-flex align-items-center gap-3">
                                                 <% if (profilePhoto) { %>
-                                                    <img src="/upload/<%= profilePhoto %>" alt="<%= displayName %>" class="bg-white shadow" style="width:96px;height:96px;border-radius:50%;object-fit:cover;">
+                                                    <img src="/upload/<%= profilePhoto %>" alt="<%= displayName %>" class="bg-white shadow" style="width:76px;height:76px;border-radius:50%;object-fit:cover;">
                                                     <% } else { %>
-                                                        <div class="d-flex align-items-center justify-content-center bg-white text-primary fw-bold shadow" style="width: 96px; height: 96px; border-radius: 50%; font-size: 2.4rem;">
+                                                        <div class="d-flex align-items-center justify-content-center bg-white text-primary fw-bold shadow" style="width:76px;height:76px;border-radius:50%;font-size:1.8rem;">
                                                             <%= initial %>
                                                         </div>
                                                         <% } %>
                                                 <div>
                                                     <span class="text-white-50 small fw-bold text-uppercase">Member Profile</span>
-                                                    <h1 class="fw-bold mb-1">
+                                                    <h1 class="fw-bold mb-1 fs-3">
                                                         <%= displayName %>
                                                     </h1>
                                                     <p class="mb-0 text-white-50">
@@ -48,20 +48,20 @@
                                                 </div>
                                             </div>
                                             <div class="text-md-end">
-                                                <div class="fs-2 fw-bold">
+                                                <div class="fs-4 fw-bold">
                                                     <%= posts ? posts.length : 0 %>
                                                 </div>
-                                                <div class="text-white-50 small">Published posts</div>
+                                                <div class="text-white-50 small">Timeline items</div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="row g-4">
-                                    <div class="col-lg-4">
-                                        <div class="hero-panel p-4 mb-4">
+                                <div class="row g-3 profile-layout">
+                                    <div class="col-lg-4 animate-fade-in-up delay-100">
+                                        <div class="hero-panel profile-panel p-3 mb-3">
                                             <div class="d-flex align-items-center gap-2 mb-3">
-                                                <span class="icon-box"><i class="bi bi-person-gear fs-5"></i></span>
+                                                <span class="icon-box"><i class="bi bi-person-gear"></i></span>
                                                 <div>
                                                     <h4 class="fw-bold mb-0">Edit Profile</h4>
                                                     <p class="text-muted small mb-0">Update your account information.</p>
@@ -96,10 +96,21 @@
                                         </div>
                                     </div>
 
-                                    <div class="col-lg-8">
-                                        <div class="hero-panel p-4 mb-4">
+                                    <div class="col-lg-8 animate-fade-in-up delay-200">
+                                        <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+                                            <div>
+                                                <span class="section-label">Timeline</span>
+                                                <h3 class="fw-bold mb-0">Your Posts</h3>
+                                            </div>
+                                            <button class="btn btn-brand btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#profileComposer" aria-expanded="false" aria-controls="profileComposer">
+                                                <i class="bi bi-plus-circle me-2"></i>Create Post
+                                            </button>
+                                        </div>
+
+                                        <div class="collapse mb-3" id="profileComposer">
+                                            <div class="hero-panel p-3">
                                             <div class="d-flex align-items-center gap-2 mb-3">
-                                                <span class="icon-box"><i class="bi bi-pencil-square fs-5"></i></span>
+                                                <span class="icon-box"><i class="bi bi-pencil-square"></i></span>
                                                 <div>
                                                     <h4 class="fw-bold mb-0">Create Post</h4>
                                                     <p class="text-muted small mb-0">Share an update with your readers.</p>
@@ -114,24 +125,25 @@
 
                                                 <div class="mb-3">
                                                     <label for="content" class="form-label fw-semibold">Content</label>
-                                                    <textarea id="content" name="content" class="form-control" rows="5" placeholder="Write your post..." required></textarea>
+                                                    <textarea id="profile-content" name="content" class="form-control summernote-editor" rows="5" placeholder="Write your post..." required></textarea>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="visibility" class="form-label fw-semibold">Visibility</label>
+                                                    <select id="visibility" name="visibility" class="form-select py-2">
+                                                        <option value="public" selected>Public (Everyone can see)</option>
+                                                        <option value="private">Private (Only you can see)</option>
+                                                    </select>
                                                 </div>
                                                 <div class="mb-4">
                                                     <label for="photo" class="form-label fw-semibold">Cover Photo <span class="text-muted small">(optional)</span></label>
                                                     <input type="file" id="photo" class="form-control py-2" name="photo" accept="image/*" />
                                                 </div>
 
-                                                <button type="submit" class="btn btn-brand">
+                                                <button type="submit" class="btn btn-brand btn-sm">
                             <i class="bi bi-send me-2"></i>Publish Post
                         </button>
                                             </form>
                                         </div>
-
-                                        <div class="d-flex align-items-center justify-content-between mb-3">
-                                            <div>
-                                                <span class="section-label">Timeline</span>
-                                                <h3 class="fw-bold mb-0">Your Posts</h3>
-                                            </div>
                                         </div>
 
                                         <% if (!posts || posts.length === 0) { %>
@@ -141,34 +153,59 @@
                                                 <p class="text-muted mb-0">Write your first post from the composer above.</p>
                                             </div>
                                             <% } else { %>
-                                                <div class="d-flex flex-column gap-3">
+                                                <div class="profile-post-grid">
                                                     <% posts.forEach((post) => { %>
-                                                        <article class="article-card overflow-hidden">
-                                                            <% if (post.photo) { %>
-                                                                <img src="/upload/<%= post.photo %>" alt="<%= post.title %>" class="w-100" style="height:260px;object-fit:cover;">
-                                                                <% } %>
-
-                                                                    <div class="p-4">
-                                                                        <div class="d-flex justify-content-between gap-3">
-                                                                            <div>
-                                                                                <div class="article-meta mb-2">
-                                                                                    <i class="bi bi-clock me-1"></i>
-                                                                                    <%= post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Just now' %>
-                                                                                </div>
-                                                                                <h4 class="fw-bold mb-2">
-                                                                                    <%= post.title %>
-                                                                                </h4>
-                                                                            </div>
-                                                                            <form action="/users/profile/posts/<%= post.id %>/delete" method="POST">
-                                                                                <button type="submit" class="btn btn-outline-danger btn-sm" aria-label="Delete post">
-                                                                                    <i class="bi bi-trash"></i>
-                                                                                </button>
-                                                                            </form>
-                                                                        </div>
-                                                                        <p class="text-muted mb-0">
-                                                                            <%= post.content %>
-                                                                        </p>
+                                                        <% const isSharedPost = post.profile_item_type === 'share'; %>
+                                                        <article class="article-card profile-post-card overflow-hidden">
+                                                            <div class="profile-post-media">
+                                                                <% if (post.photo) { %>
+                                                                    <img src="/upload/<%= post.photo %>" alt="<%= post.title %>">
+                                                                <% } else { %>
+                                                                    <div class="h-100 d-flex align-items-center justify-content-center">
+                                                                        <span class="icon-box"><i class="bi bi-image"></i></span>
                                                                     </div>
+                                                                <% } %>
+                                                            </div>
+                                                            <div class="profile-post-content">
+                                                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                                                    <div class="min-w-0">
+                                                                        <div class="article-meta mb-1">
+                                                                            <i class="bi bi-clock me-1"></i>
+                                                                            <%= (post.timeline_at || post.created_at) ? new Date(post.timeline_at || post.created_at).toLocaleDateString() : 'Just now' %>
+                                                                        </div>
+                                                                        <h4 class="fw-bold mb-0 d-flex align-items-center flex-wrap gap-2">
+                                                                            <%= post.title %>
+                                                                        </h4>
+                                                                    </div>
+                                                                    <% if (!isSharedPost) { %>
+                                                                        <form action="/users/profile/posts/<%= post.id %>/delete" method="POST">
+                                                                            <button type="submit" class="btn btn-outline-danger btn-sm py-1 px-2" aria-label="Delete post">
+                                                                                <i class="bi bi-trash"></i>
+                                                                            </button>
+                                                                        </form>
+                                                                    <% } %>
+                                                                </div>
+                                                                <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+                                                                    <% if (isSharedPost) { %>
+                                                                        <span class="badge bg-info-subtle text-info-emphasis text-uppercase px-2 py-1 border border-info-subtle" style="font-size:0.62rem;border-radius:4px;"><i class="bi bi-share-fill me-1"></i>Shared</span>
+                                                                        <a href="/users/<%= post.user_id %>" class="tag">
+                                                                            <% if (post.author_photo) { %>
+                                                                                <img src="/upload/<%= post.author_photo %>" alt="<%= post.author %>" class="me-2" style="width:16px;height:16px;border-radius:50%;object-fit:cover;">
+                                                                            <% } %>
+                                                                            <%= post.author || 'Unknown author' %>
+                                                                        </a>
+                                                                    <% } else { %>
+                                                                        <% if (post.visibility === 'private') { %>
+                                                                            <span class="badge bg-warning text-dark text-uppercase px-2 py-1" style="font-size:0.62rem;border-radius:4px;"><i class="bi bi-lock-fill me-1"></i>Private</span>
+                                                                        <% } else { %>
+                                                                            <span class="badge bg-light text-muted text-uppercase px-2 py-1 border" style="font-size:0.62rem;border-radius:4px;"><i class="bi bi-globe me-1"></i>Public</span>
+                                                                        <% } %>
+                                                                    <% } %>
+                                                                </div>
+                                                                <div class="text-muted mb-0 feed-content">
+                                                                    <%- post.content %>
+                                                                </div>
+                                                            </div>
                                                         </article>
                                                         <% }) %>
                                                 </div>
@@ -179,6 +216,29 @@
         </main>
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.js"></script>
+        <script>
+            const initProfileEditor = () => {
+                const editor = $('.summernote-editor');
+                if (editor.next('.note-editor').length) return;
+
+                editor.summernote({
+                    placeholder: 'Write your post...',
+                    tabsize: 2,
+                    height: 220,
+                    toolbar: [
+                        ['style', ['style']],
+                        ['font', ['bold', 'italic', 'underline', 'clear']],
+                        ['para', ['ul', 'ol', 'paragraph']],
+                        ['insert', ['link', 'picture']],
+                        ['view', ['codeview']]
+                    ]
+                });
+            };
+
+            document.getElementById('profileComposer')?.addEventListener('shown.bs.collapse', initProfileEditor);
+        </script>
         </body>
 
         </html>

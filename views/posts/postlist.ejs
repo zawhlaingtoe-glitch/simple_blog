@@ -3,7 +3,7 @@
     <main class="py-4 py-md-5">
         <section class="container">
             <div class="feed-layout">
-                <aside class="feed-sidebar d-none d-lg-block">
+                <aside class="feed-sidebar d-none d-lg-block animate-fade-in-up">
                     <div class="feed-panel p-3">
                         <a href="/" class="feed-nav-item">
                             <span class="icon-box"><i class="bi bi-house"></i></span>
@@ -20,7 +20,7 @@
                     </div>
                 </aside>
 
-                <div>
+                <div class="animate-fade-in-up delay-100">
                     <div class="feed-panel p-3 p-sm-4 mb-3">
                         <div class="d-flex align-items-center justify-content-between gap-3">
                             <div>
@@ -63,7 +63,7 @@
                                             <article class="feed-card" id="post-<%= post.id %>" data-post-id="<%= post.id %>">
                                                 <div class="p-3 p-sm-4">
                                                     <div class="d-flex align-items-start justify-content-between gap-3">
-                                                        <div class="d-flex align-items-center gap-2 min-w-0">
+                                                        <a href="/users/<%= post.user_id %>" class="d-flex align-items-center gap-2 min-w-0 text-decoration-none text-reset">
                                                             <% if (post.author_photo) { %>
                                                                 <img src="/upload/<%= post.author_photo %>" alt="<%= authorName %>" class="feed-author-photo">
                                                                 <% } else { %>
@@ -76,7 +76,7 @@
                                                                                 <%= post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Just now' %>
                                                                             </div>
                                                                         </div>
-                                                        </div>
+                                                        </a>
 
                                                         <% if (isOwner) { %>
                                                             <div class="dropdown">
@@ -95,8 +95,13 @@
                                                             <% } %>
                                                     </div>
 
-                                                    <h4 class="fw-bold mt-3 mb-2"><%= post.title %></h4>
-                                                    <p class="feed-content mb-0"><%= post.content %></p>
+                                                    <h4 class="fw-bold mt-3 mb-2 d-flex align-items-center flex-wrap gap-2">
+                                                        <%= post.title %>
+                                                        <% if (post.visibility === 'private') { %>
+                                                            <span class="badge bg-warning text-dark"><i class="bi bi-lock-fill me-1"></i>Private</span>
+                                                        <% } %>
+                                                    </h4>
+                                                    <div class="feed-content mb-0"><%- post.content %></div>
                                                 </div>
 
                                                 <% if (post.photo) { %>
@@ -191,7 +196,7 @@
                                     <% } %>
                 </div>
 
-                <aside class="feed-sidebar feed-sidebar-right">
+                <aside class="feed-sidebar feed-sidebar-right animate-fade-in-up delay-200">
                     <div class="feed-panel p-4 mb-3">
                         <span class="section-label">Comfort next</span>
                         <h5 class="fw-bold mt-2">Polish checklist</h5>
@@ -325,7 +330,7 @@
                     await navigator.clipboard.writeText(shareUrl);
                     updateCounts(data.counts);
                     shareButton.classList.add('is-active');
-                    shareStatus.textContent = 'Link copied';
+                    shareStatus.textContent = 'Shared to profile. Link copied';
                     setTimeout(() => {
                         shareStatus.textContent = '';
                         shareButton.classList.remove('is-active');

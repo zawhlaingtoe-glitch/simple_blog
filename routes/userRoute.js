@@ -7,6 +7,7 @@ route.get("/register", userController.showRegisterForm);
 route.post("/register", userController.register);
 route.get("/login", userController.showLoginForm);
 route.post("/login", userController.login);
+route.get("/logout", userController.logout);
 
 route.get("/profile", verifyToken, userController.profile);
 route.post("/profile", verifyToken, userController.updateProfile);
@@ -16,5 +17,6 @@ route.post("/profile/posts/:id/delete", verifyToken, userController.deleteProfil
 route.get("/me/:id", verifyTokenAndAuthorization, userController.currentUser);
 route.put("/update/:id", verifyTokenAndAuthorization, userController.updateUser);
 route.delete("/delete/:id", verifyTokenAndAuthorization, userController.delete);
+route.get("/:id", userController.publicProfile);
 
 module.exports = route;

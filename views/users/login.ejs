@@ -3,7 +3,7 @@
     <main class="py-5">
         <section class="container">
             <div class="row align-items-center justify-content-center g-5">
-                <div class="col-lg-5">
+                <div class="col-lg-5 animate-scale-in">
                     <div class="hero-panel p-4 p-md-5">
                         <div class="mb-4">
                             <span class="icon-box mb-3"><i class="bi bi-box-arrow-in-right fs-5"></i></span>
@@ -14,7 +14,9 @@
                         <% if (error) { %>
                             <div class="alert alert-danger d-flex align-items-center" role="alert">
                                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                <div><%= error %></div>
+                                <div>
+                                    <%= error %>
+                                </div>
                             </div>
                             <% } %>
 
@@ -23,7 +25,7 @@
                                         <label for="email" class="form-label fw-semibold">Email</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-white"><i class="bi bi-envelope text-primary"></i></span>
-                                            <input type="email" id="email" name="email" placeholder="you@example.com" class="form-control py-2" required />
+                                            <input type="email" id="email" name="email" placeholder="you@example.com" class="form-control py-2" />
                                         </div>
                                     </div>
 
@@ -31,7 +33,7 @@
                                         <label for="password" class="form-label fw-semibold">Password</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-white"><i class="bi bi-lock text-primary"></i></span>
-                                            <input type="password" id="password" name="password" placeholder="At least 6 characters" class="form-control py-2" required />
+                                            <input type="password" id="password" name="password" placeholder="At least 6 characters" class="form-control py-2" />
                                         </div>
                                     </div>
 

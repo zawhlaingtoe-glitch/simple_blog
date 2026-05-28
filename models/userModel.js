@@ -52,7 +52,6 @@ class User {
             const [result] = await db.query("INSERT INTO USERS(username,email,password) VALUES(?,?,?)", [username, email, hashedPassword])
 
             return result.insertId;
-            console.log(result.insertId)
         } catch (error) {
             console.error("Error creating user: ", error);
             throw error

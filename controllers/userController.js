@@ -1,5 +1,6 @@
 const User = require("../models/userModel");
 const Post = require("../models/postModel");
+const Social = require("../models/socialModel");
 const { generateToken } = require("../utils/jwt");
 const bcrypt = require('bcrypt');
 const path = require("path");
@@ -14,6 +15,22 @@ const storage = multer.diskStorage({
 const upload = multer({
     storage: storage,
 }).single("photo");
+
+const normalizeVisibility = (visibility) => visibility === "private" ? "private" : "public";
+
+const sanitizeContent = (content = "") => {
+    return String(content)
+        .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+        .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
+        .replace(/<(iframe|object|embed|link|meta)[\s\S]*?>/gi, "")
+        .replace(/\son\w+="[^"]*"/gi, "")
+        .replace(/\son\w+='[^']*'/gi, "")
+        .replace(/\s(href|src)=["']javascript:[^"']*["']/gi, "");
+};
+
+const getProfileTimeline = async(userId, includePrivateOwn = true) => {
+    return Social.findProfileTimeline(userId, includePrivateOwn);
+};
 
 exports.showRegisterForm = (_, res) => {
     res.render("users/register", {
@@ -33,14 +50,14 @@ exports.register = async(req, res) => {
         }
         let result = await User.createUser(name, email, password)
         if (result) {
-            res.redirect("/users/login")
-        }
+                res.redirect("/users/login")
+            }
     } catch (error) {
 
         console.error("Registration error:", error);
         res.render("users/register", {
             title: "Register",
-            error: "Something went wrong during Login!"
+            error: "Something went wrong during registration!"
         });
     }
 }
@@ -102,17 +119,34 @@ exports.login = async(req, res) => {
 
 
         console.error("Error: ", error);
-        return res.render("users/login", {
-            title: "login",
-            error: "Someting went wrong while login!"
-        })
+        if (req.accepts("html")) {
+            return res.render("users/login", {
+                title: "Login",
+                error: "Something went wrong while login!"
+            });
+        }
+        return res.status(500).json({
+            status: "error",
+            message: "Something went wrong while login!"
+        });
     }
+}
+
+exports.logout = (req, res) => {
+    res.clearCookie("token");
+    if (req.accepts("html")) {
+        return res.redirect("/users/login");
+    }
+    return res.status(200).json({
+        status: "success",
+        message: "Logged out successfully!"
+    });
 }
 
 exports.profile = async(req, res) => {
     try {
         const user = await User.findById(req.user.id);
-        const posts = await Post.findByUserId(req.user.id);
+        const posts = await getProfileTimeline(req.user.id, true)
 
         return res.render("users/profile", {
             title: "Your Profile",
@@ -133,6 +167,31 @@ exports.profile = async(req, res) => {
     }
 };
 
+exports.publicProfile = async(req, res) => {
+    try {
+        const profileUserId = req.params.id;
+        const viewerId = req.user?.id || null;
+        const isOwnProfile = viewerId && String(viewerId) === String(profileUserId);
+        const user = await User.findById(profileUserId);
+
+        if (!user) {
+            return res.status(404).send("User not found");
+        }
+
+        const posts = await getProfileTimeline(profileUserId, Boolean(isOwnProfile));
+
+        return res.render("users/public-profile", {
+            title: `${user.username || 'User'} Profile`,
+            user,
+            posts,
+            isOwnProfile
+        });
+    } catch (error) {
+        console.error("Public profile load error:", error);
+        return res.status(500).send("Server Error");
+    }
+};
+
 exports.updateProfile = async(req, res) => {
     upload(req, res, async(err) => {
         if (err) {
@@ -140,7 +199,7 @@ exports.updateProfile = async(req, res) => {
             return res.render("users/profile", {
                 title: "Your Profile",
                 user: await User.findById(req.user.id),
-                posts: await Post.findByUserId(req.user.id),
+                posts: await getProfileTimeline(req.user.id, true),
                 error: "Could not upload profile photo.",
                 success: null
             });
@@ -155,7 +214,7 @@ exports.updateProfile = async(req, res) => {
                 return res.render("users/profile", {
                     title: "Your Profile",
                     user: await User.findById(userId),
-                    posts: await Post.findByUserId(userId),
+                    posts: await getProfileTimeline(userId, true),
                     error: "Name and email are required.",
                     success: null
                 });
@@ -172,7 +231,7 @@ exports.updateProfile = async(req, res) => {
                     return res.render("users/profile", {
                         title: "Your Profile",
                         user: existingUser,
-                        posts: await Post.findByUserId(userId),
+                        posts: await getProfileTimeline(userId, true),
                         error: "Email already in use.",
                         success: null
                     });
@@ -187,7 +246,7 @@ exports.updateProfile = async(req, res) => {
             return res.render("users/profile", {
                 title: "Your Profile",
                 user: await User.findById(req.user.id),
-                posts: await Post.findByUserId(req.user.id),
+                posts: await getProfileTimeline(req.user.id, true),
                 error: "Could not update profile.",
                 success: null
             });
@@ -203,10 +262,10 @@ exports.createProfilePost = async(req, res) => {
         }
 
         try {
-            const { title, content } = req.body;
+            const { title, content, visibility } = req.body;
             const photo = req.file ? req.file.filename : null;
 
-            await Post.createPost(req.user.id, title, content, photo);
+            await Post.createPost(req.user.id, title, sanitizeContent(content), photo, normalizeVisibility(visibility));
             return res.redirect("/users/profile");
         } catch (error) {
             console.error("Create profile post error:", error);
@@ -321,15 +380,27 @@ exports.delete = async(req, res) => {
     try {
         const userId = req.params.id;
         const user = await User.findById(userId);
-         res.redirect("/users");
+        if (!user) {
+            if (req.accepts("html")) {
+                return res.redirect("/users/login");
+            }
+            return res.status(404).json({
+                status: "Fail!",
+                message: "User not found!"
+            });
+        }
+
         await User.deleteUser(userId);
 
-        return res
-            .status(200)
-            .json({
-                status: "Success!",
-                message: "User has been deleted! "
-            })
+        if (req.accepts("html")) {
+            res.clearCookie("token");
+            return res.redirect("/users/register");
+        }
+
+        return res.status(200).json({
+            status: "Success!",
+            message: "User has been deleted!"
+        });
 
     } catch (error) {
         console.error("Delete Error:", error);

@@ -1,0 +1,88 @@
+<%- include('../partials/header') %>
+
+<%
+const displayName = user && (user.username || user.name) ? (user.username || user.name) : 'User';
+const initial = displayName.charAt(0).toUpperCase();
+const profilePhoto = user && user.profile_photo ? user.profile_photo : null;
+%>
+
+<main class="py-5">
+    <section class="container">
+        <div class="hero-panel overflow-hidden mb-4 animate-scale-in">
+            <div class="p-4 p-md-5 text-white" style="background: linear-gradient(135deg, #111827, #1d4ed8);">
+                <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-4">
+                    <div class="d-flex align-items-end gap-3">
+                        <% if (profilePhoto) { %>
+                            <img src="/upload/<%= profilePhoto %>" alt="<%= displayName %>" class="bg-white shadow" style="width:88px;height:88px;border-radius:50%;object-fit:cover;">
+                        <% } else { %>
+                            <div class="d-flex align-items-center justify-content-center bg-white text-primary fw-bold shadow" style="width:88px;height:88px;border-radius:50%;font-size:2rem;">
+                                <%= initial %>
+                            </div>
+                        <% } %>
+                        <div>
+                            <span class="text-white-50 small fw-bold text-uppercase">Member Profile</span>
+                            <h1 class="fw-bold mb-1"><%= displayName %></h1>
+                            <% if (isOwnProfile) { %>
+                                <p class="mb-0 text-white-50"><%= user.email %></p>
+                            <% } %>
+                        </div>
+                    </div>
+                    <div class="text-md-end">
+                        <div class="fs-2 fw-bold"><%= posts ? posts.length : 0 %></div>
+                        <div class="text-white-50 small"><%= isOwnProfile ? 'Timeline items' : 'Public timeline' %></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-end gap-3 mb-3">
+            <div>
+                <span class="section-label">Timeline</span>
+                <h2 class="fw-bold mb-0"><%= isOwnProfile ? 'Your Posts' : displayName + "'s Posts" %></h2>
+            </div>
+            <% if (isOwnProfile) { %>
+                <a href="/users/profile" class="btn btn-brand"><i class="bi bi-person-gear me-2"></i>Edit Profile</a>
+            <% } %>
+        </div>
+
+        <% if (!posts || posts.length === 0) { %>
+            <div class="hero-panel p-5 text-center">
+                <span class="icon-box mb-3"><i class="bi bi-journal-text fs-5"></i></span>
+                <h4 class="fw-bold">No public posts yet</h4>
+                <p class="text-muted mb-0">When this member publishes public posts, they will appear here.</p>
+            </div>
+        <% } else { %>
+            <div class="row g-4">
+                <% posts.forEach((post) => { %>
+                    <% const isSharedPost = post.profile_item_type === 'share'; %>
+                    <div class="col-lg-6">
+                        <article class="article-card overflow-hidden h-100">
+                            <% if (post.photo) { %>
+                                <img src="/upload/<%= post.photo %>" alt="<%= post.title %>" class="w-100" style="height:240px;object-fit:cover;">
+                            <% } %>
+                            <div class="p-4">
+                                <div class="article-meta mb-2">
+                                    <i class="bi bi-calendar3 me-1"></i>
+                                    <%= (post.timeline_at || post.created_at) ? new Date(post.timeline_at || post.created_at).toLocaleDateString() : 'Just now' %>
+                                    <% if (isSharedPost) { %>
+                                        <span class="badge bg-info-subtle text-info-emphasis ms-2"><i class="bi bi-share-fill me-1"></i>Shared</span>
+                                    <% } %>
+                                    <% if (isOwnProfile && post.visibility === 'private') { %>
+                                        <span class="badge bg-warning text-dark ms-2"><i class="bi bi-lock-fill me-1"></i>Private</span>
+                                    <% } %>
+                                </div>
+                                <h4 class="fw-bold mb-2"><%= post.title %></h4>
+                                <div class="feed-content mb-0"><%- post.content %></div>
+                            </div>
+                        </article>
+                    </div>
+                <% }) %>
+            </div>
+        <% } %>
+    </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
