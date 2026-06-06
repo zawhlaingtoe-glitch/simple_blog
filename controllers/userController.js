@@ -41,6 +41,12 @@ exports.showRegisterForm = (_, res) => {
 exports.register = async(req, res) => {
     try {
         const { name, email, password } = req.body;
+        if (!password || password.length < 6) {
+            return res.render("users/register", {
+                title: "Register",
+                error: "Password must be at least 6 characters long!"
+            });
+        }
         let user = await User.findByEmail(email);
         if (user) {
             return res.render("users/register", {
@@ -50,8 +56,8 @@ exports.register = async(req, res) => {
         }
         let result = await User.createUser(name, email, password)
         if (result) {
-                res.redirect("/users/login")
-            }
+            res.redirect("/users/login")
+        }
     } catch (error) {
 
         console.error("Registration error:", error);
@@ -170,7 +176,7 @@ exports.profile = async(req, res) => {
 exports.publicProfile = async(req, res) => {
     try {
         const profileUserId = req.params.id;
-        const viewerId = req.user?.id || null;
+        const viewerId = req.user ?.id || null;
         const isOwnProfile = viewerId && String(viewerId) === String(profileUserId);
         const user = await User.findById(profileUserId);
 
