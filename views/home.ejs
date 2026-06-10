@@ -116,40 +116,44 @@ const heroPost = latestPosts[0];
                 </div>
                 <% } else { %>
                     <div class="row g-3">
-                        <% latestPosts.forEach((post, index) => { 
+                        <% latestPosts.forEach((post, index) => {
                             const delayClass = index === 0 ? '' : index === 1 ? 'delay-100' : 'delay-200';
                         %>
                             <div class="col-lg-4 animate-fade-in-up <%= delayClass %>">
-                                <article class="article-card smart-post-card overflow-hidden">
-                                    <div class="smart-post-media">
-                                        <% if (post.photo) { %>
-                                            <img src="/upload/<%= post.photo %>" alt="<%= post.title %>">
-                                        <% } else { %>
-                                            <div class="h-100 d-flex align-items-center justify-content-center">
-                                                <span class="icon-box"><i class="bi bi-image"></i></span>
-                                            </div>
-                                        <% } %>
-                                    </div>
-                                    <div class="smart-post-body">
-                                        <a class="tag align-self-start" href="/users/<%= post.user_id %>">
-                                            <% if (post.author_photo) { %>
-                                                <img src="/upload/<%= post.author_photo %>" alt="<%= post.author %>" class="me-2" style="width:18px;height:18px;border-radius:50%;object-fit:cover;">
+                                <a href="/posts/<%= post.id %>" class="text-decoration-none text-reset d-block h-100">
+                                    <article class="article-card smart-post-card overflow-hidden">
+                                        <div class="smart-post-media">
+                                            <% if (post.photo) { %>
+                                                <img src="/upload/<%= post.photo %>" alt="<%= post.title %>">
+                                            <% } else { %>
+                                                <div class="h-100 d-flex align-items-center justify-content-center">
+                                                    <span class="icon-box"><i class="bi bi-image"></i></span>
+                                                </div>
                                             <% } %>
-                                            <%= post.author || 'Unknown author' %>
-                                        </a>
-                                        <h4 class="fw-bold smart-post-title"><a href="/posts"><%= post.title %></a></h4>
-                                        <p class="smart-post-excerpt">
-                                            <%= post.content ? post.content.replace(/<[^>]*>/g, '') : '' %>
-                                        </p>
-                                        <div class="smart-post-footer">
-                                            <span class="article-meta">
-                                                <i class="bi bi-calendar3 me-1"></i>
-                                                <%= post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Just now' %>
-                                            </span>
-                                            <a href="/posts" class="btn btn-outline-brand btn-sm py-1 px-2">Read</a>
                                         </div>
-                                    </div>
-                                </article>
+                                        <div class="smart-post-body">
+                                            <span class="tag align-self-start">
+                                                <% if (post.author_photo) { %>
+                                                    <img src="/upload/<%= post.author_photo %>" alt="<%= post.author %>" class="me-2" style="width:18px;height:18px;border-radius:50%;object-fit:cover;">
+                                                <% } %>
+                                                <%= post.author || 'Unknown author' %>
+                                            </span>
+                                            <h4 class="fw-bold smart-post-title"><%= post.title %></h4>
+                                            <p class="smart-post-excerpt">
+                                                <%= post.content ? post.content.replace(/<[^>]*>/g, '') : '' %>
+                                            </p>
+                                            <div class="smart-post-footer">
+                                                <span class="article-meta">
+                                                    <i class="bi bi-calendar3 me-1"></i>
+                                                    <%= post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Just now' %>
+                                                </span>
+                                                <span class="badge bg-primary rounded-pill px-3 py-2" style="font-weight:600;font-size:0.72rem;">
+                                                    Read <i class="bi bi-arrow-right ms-1"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </article>
+                                </a>
                             </div>
                             <% }) %>
                     </div>

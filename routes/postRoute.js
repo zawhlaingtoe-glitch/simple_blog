@@ -12,6 +12,7 @@ route.post("/:id/reactions", verify.verifyToken, postController.toggleReaction)
 route.post("/:id/comments", verify.verifyToken, postController.createComment)
 route.post("/:id/shares", verify.verifyToken, postController.createShare)
 route.get("/userposts/:userId", verify.verifyToken, postController.getUserPosts);
+route.get("/:id", postController.showPost);
 route.put("/update/:id", verify.verifyToken, postController.updatePost)
 route.delete("/delete/:id", verify.verifyToken, postController.deletePost)
 module.exports = route;

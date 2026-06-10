@@ -73,6 +73,48 @@ exports.index = async(req, res) => {
         res.status(500).send("Server Error");
     }
 };
+
+exports.showPost = async(req, res) => {
+    try {
+        const postId = req.params.id;
+        const currentUserId = getCurrentUserId(req);
+        const post = await Post.findByid(postId);
+
+        if (!post) {
+            return res.status(404).render("error", {
+                title: "Not Found",
+                message: "That post was not found.",
+                statusCode: 404
+            });
+        }
+
+        // Check visibility: private posts are only visible to the owner
+        if (post.visibility === 'private' && String(post.user_id) !== String(currentUserId)) {
+            return res.status(403).render("error", {
+                title: "Access Denied",
+                message: "This post is private.",
+                statusCode: 403
+            });
+        }
+
+        // Attach social data
+        const postsWithSocial = await Social.attachToPosts([post], currentUserId);
+        const postWithSocial = postsWithSocial[0] || post;
+
+        const currentUser = currentUserId ? await User.findById(currentUserId) : null;
+
+        res.render("posts/show", {
+            post: postWithSocial,
+            title: post.title,
+            currentUserId,
+            currentUser
+        });
+    } catch (error) {
+        console.error("Error viewing post: ", error);
+        res.status(500).send("Server Error");
+    }
+};
+
 exports.showCreateForm = async(req, res) => {
     try {
         const user = await User.findById(req.user.id);
