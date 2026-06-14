@@ -126,8 +126,8 @@ const plainContent = post.content ? post.content.replace(/<[^>]*>/g, '') : '';
                             <button type="button" class="feed-action" data-comment-toggle>
                                 <i class="bi bi-chat-left me-1"></i><span>Comment</span>
                             </button>
-                            <button type="button" class="feed-action" data-share-button data-share-url="/posts/<%= post.id %>">
-                                <i class="bi bi-share me-1"></i><span>Share</span>
+                            <button type="button" class="feed-action <%= post.current_user_shared ? 'is-active' : '' %>" data-share-button data-shared="<%= post.current_user_shared ? 'true' : 'false' %>">
+                                <i class="bi bi-share me-1"></i><span><%= post.current_user_shared ? 'Shared' : 'Share' %></span>
                             </button>
                         </div>
                     </div>
@@ -138,19 +138,49 @@ const plainContent = post.content ? post.content.replace(/<[^>]*>/g, '') : '';
                                 <% post.comments.forEach(comment => {
                                     const commentAuthor = comment.author || 'User';
                                     const commentInitial = commentAuthor.charAt(0).toUpperCase();
+                                    const replies = comment.replies || [];
                                 %>
-                                    <div class="comment-preview has-comment">
-                                        <div class="d-flex align-items-start gap-2">
-                                            <% if (comment.author_photo) { %>
-                                                <img src="/upload/<%= comment.author_photo %>" alt="<%= commentAuthor %>" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">
-                                            <% } else { %>
-                                                <span class="feed-author-fallback" style="width:30px;height:30px;flex-basis:30px;font-size:0.78rem;"><%= commentInitial %></span>
-                                            <% } %>
-                                            <div>
-                                                <div class="fw-bold small"><%= commentAuthor %></div>
-                                                <div><%= comment.content %></div>
+                                    <div class="comment-thread">
+                                        <div class="comment-preview has-comment" data-comment-id="<%= comment.id %>">
+                                            <div class="d-flex align-items-start gap-2">
+                                                <% if (comment.author_photo) { %>
+                                                    <img src="/upload/<%= comment.author_photo %>" alt="<%= commentAuthor %>" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">
+                                                <% } else { %>
+                                                    <span class="feed-author-fallback" style="width:30px;height:30px;flex-basis:30px;font-size:0.78rem;"><%= commentInitial %></span>
+                                                <% } %>
+                                                <div class="flex-grow-1">
+                                                    <div class="fw-bold small"><%= commentAuthor %></div>
+                                                    <div class="comment-text"><%= comment.content %></div>
+                                                    <button type="button" class="reply-toggle-btn small text-primary border-0 bg-transparent p-0 mt-1 fw-semibold" data-reply-toggle="<%= comment.id %>">Reply</button>
+                                                    <div class="reply-box mt-2" data-reply-box="<%= comment.id %>" style="display:none;">
+                                                        <textarea class="form-control comment-input" rows="1" placeholder="Write a reply..." data-reply-input="<%= comment.id %>"></textarea>
+                                                        <button type="button" class="btn btn-brand btn-sm mt-1" data-reply-submit="<%= comment.id %>"><i class="bi bi-send me-1"></i>Reply</button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
+                                        <% if (replies.length > 0) { %>
+                                            <div class="reply-thread">
+                                                <% replies.forEach(reply => {
+                                                    const replyAuthor = reply.author || 'User';
+                                                    const replyInitial = replyAuthor.charAt(0).toUpperCase();
+                                                %>
+                                                    <div class="comment-preview has-comment reply-item">
+                                                        <div class="d-flex align-items-start gap-2">
+                                                            <% if (reply.author_photo) { %>
+                                                                <img src="/upload/<%= reply.author_photo %>" alt="<%= replyAuthor %>" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">
+                                                            <% } else { %>
+                                                                <span class="feed-author-fallback" style="width:26px;height:26px;flex-basis:26px;font-size:0.7rem;"><%= replyInitial %></span>
+                                                            <% } %>
+                                                            <div>
+                                                                <div class="fw-bold small"><%= replyAuthor %></div>
+                                                                <div class="comment-text"><%= reply.content %></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                <% }) %>
+                                            </div>
+                                        <% } %>
                                     </div>
                                 <% }) %>
                             <% } %>
@@ -202,110 +232,173 @@ const plainContent = post.content ? post.content.replace(/<[^>]*>/g, '') : '';
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    (function() {
-        const card = document.querySelector('.detail-card');
-        if (!card) return;
+        (function() {
+            const card = document.querySelector('.detail-card');
+            if (!card) return;
 
-        const postId = card.dataset.postId;
-        const reactionButton = card.querySelector('[data-reaction-button]');
-        const reactionCount = card.querySelector('[data-reaction-count]');
-        const reactionUsers = card.querySelector('[data-reaction-users]');
-        const commentToggle = card.querySelector('[data-comment-toggle]');
-        const commentDrawer = card.querySelector('[data-comment-drawer]');
-        const commentInput = card.querySelector('[data-comment-input]');
-        const commentSubmit = card.querySelector('[data-comment-submit]');
-        const commentList = card.querySelector('[data-comment-list]');
-        const commentCount = card.querySelector('[data-comment-count]');
-        const shareButton = card.querySelector('[data-share-button]');
-        const shareCount = card.querySelector('[data-share-count]');
-        const shareStatus = card.querySelector('[data-share-status]');
+            const postId = card.dataset.postId;
+            const reactionButton = card.querySelector('[data-reaction-button]');
+            const reactionCount = card.querySelector('[data-reaction-count]');
+            const reactionUsers = card.querySelector('[data-reaction-users]');
+            const commentToggle = card.querySelector('[data-comment-toggle]');
+            const commentDrawer = card.querySelector('[data-comment-drawer]');
+            const commentInput = card.querySelector('[data-comment-input]');
+            const commentSubmit = card.querySelector('[data-comment-submit]');
+            const commentList = card.querySelector('[data-comment-list]');
+            const commentCount = card.querySelector('[data-comment-count]');
+            const shareButton = card.querySelector('[data-share-button]');
+            const shareCount = card.querySelector('[data-share-count]');
+            const shareStatus = card.querySelector('[data-share-status]');
 
-        const pluralize = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
-        const goLogin = () => { window.location.href = '/users/login'; };
-        const postJson = async (url, body = {}) => {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            if (response.redirected || response.status === 401 || response.status === 403) {
-                goLogin();
-                return null;
-            }
-            return response.json();
-        };
+            const pluralize = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
+            const goLogin = () => { window.location.href = '/users/login'; };
+            const postJson = async (url, body = {}) => {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (response.redirected || response.status === 401 || response.status === 403) {
+                    goLogin();
+                    return null;
+                }
+                return response.json();
+            };
 
-        const updateCounts = (counts) => {
-            if (!counts) return;
-            reactionCount.textContent = pluralize(Number(counts.reactions || 0), 'reaction');
-            commentCount.textContent = pluralize(Number(counts.comments || 0), 'comment');
-            shareCount.textContent = pluralize(Number(counts.shares || 0), 'share');
-            if (reactionUsers && counts.reactionUsers) {
-                reactionUsers.textContent = counts.reactionUsers.length > 0
-                    ? `Liked by ${counts.reactionUsers.map(u => u.author).join(', ')}`
-                    : '';
-            }
-        };
+            const updateCounts = (counts) => {
+                if (!counts) return;
+                reactionCount.textContent = pluralize(Number(counts.reactions || 0), 'reaction');
+                commentCount.textContent = pluralize(Number(counts.comments || 0), 'comment');
+                shareCount.textContent = pluralize(Number(counts.shares || 0), 'share');
+                if (reactionUsers && counts.reactionUsers) {
+                    reactionUsers.textContent = counts.reactionUsers.length > 0
+                        ? `Liked by ${counts.reactionUsers.map(u => u.author).join(', ')}`
+                        : '';
+                }
+                if (shareButton && counts.current_user_shared !== undefined) {
+                    const isShared = counts.current_user_shared;
+                    shareButton.classList.toggle('is-active', isShared);
+                    shareButton.dataset.shared = isShared ? 'true' : 'false';
+                    shareButton.querySelector('span').textContent = isShared ? 'Shared' : 'Share';
+                    shareButton.querySelector('i').className = 'bi bi-share me-1';
+                }
+            };
 
-        reactionButton?.addEventListener('click', async () => {
-            const data = await postJson(`/posts/${postId}/reactions`, { reaction_type: 'like' });
-            if (!data) return;
-            reactionButton.classList.toggle('is-active', data.reacted);
-            reactionButton.dataset.reacted = data.reacted ? 'true' : 'false';
-            reactionButton.querySelector('span').textContent = data.reacted ? 'Reacted' : 'React';
-            reactionButton.querySelector('i').className = data.reacted ? 'bi bi-hand-thumbs-up-fill me-1' : 'bi bi-hand-thumbs-up me-1';
-            updateCounts(data.counts);
-        });
-
-        commentToggle?.addEventListener('click', () => {
-            commentDrawer.classList.toggle('is-open');
-            commentToggle.classList.toggle('is-active', commentDrawer.classList.contains('is-open'));
-            if (commentDrawer.classList.contains('is-open')) commentInput.focus();
-        });
-
-        commentSubmit?.addEventListener('click', async () => {
-            const comment = commentInput.value.trim();
-            if (!comment) { commentInput.focus(); return; }
-            const data = await postJson(`/posts/${postId}/comments`, { content: comment });
-            if (!data) return;
-            const commentAuthor = data.comment.author || 'User';
-            const commentInitial = commentAuthor.charAt(0).toUpperCase();
-            const item = document.createElement('div');
-            item.className = 'comment-preview has-comment';
-            item.innerHTML = `
-                <div class="d-flex align-items-start gap-2">
-                    ${data.comment.author_photo
-                        ? `<img src="/upload/${data.comment.author_photo}" alt="${commentAuthor}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">`
-                        : `<span class="feed-author-fallback" style="width:30px;height:30px;flex-basis:30px;font-size:0.78rem;">${commentInitial}</span>`}
-                    <div>
-                        <div class="fw-bold small">${commentAuthor}</div>
-                        <div>${data.comment.content}</div>
-                    </div>
-                </div>`;
-            commentList.appendChild(item);
-            commentInput.value = '';
-            updateCounts(data.counts);
-        });
-
-        shareButton?.addEventListener('click', async () => {
-            const shareUrl = `${window.location.origin}${shareButton.dataset.shareUrl}`;
-            const data = await postJson(`/posts/${postId}/shares`);
-            if (!data) return;
-            try {
-                await navigator.clipboard.writeText(shareUrl);
+            reactionButton?.addEventListener('click', async () => {
+                const data = await postJson(`/posts/${postId}/reactions`, { reaction_type: 'like' });
+                if (!data) return;
+                reactionButton.classList.toggle('is-active', data.reacted);
+                reactionButton.dataset.reacted = data.reacted ? 'true' : 'false';
+                reactionButton.querySelector('span').textContent = data.reacted ? 'Reacted' : 'React';
+                reactionButton.querySelector('i').className = data.reacted ? 'bi bi-hand-thumbs-up-fill me-1' : 'bi bi-hand-thumbs-up me-1';
                 updateCounts(data.counts);
-                shareButton.classList.add('is-active');
-                shareStatus.textContent = 'Shared to profile. Link copied';
-                setTimeout(() => {
-                    shareStatus.textContent = '';
-                    shareButton.classList.remove('is-active');
-                }, 1800);
-            } catch (_error) {
-                shareStatus.textContent = shareUrl;
-            }
-        });
-    })();
-</script>
+            });
+
+            commentToggle?.addEventListener('click', () => {
+                commentDrawer.classList.toggle('is-open');
+                commentToggle.classList.toggle('is-active', commentDrawer.classList.contains('is-open'));
+                if (commentDrawer.classList.contains('is-open')) commentInput.focus();
+            });
+
+            commentSubmit?.addEventListener('click', async () => {
+                const comment = commentInput.value.trim();
+                if (!comment) { commentInput.focus(); return; }
+                const data = await postJson(`/posts/${postId}/comments`, { content: comment });
+                if (!data) return;
+                const commentAuthor = data.comment.author || 'User';
+                const commentInitial = commentAuthor.charAt(0).toUpperCase();
+                const item = document.createElement('div');
+                item.className = 'comment-thread';
+                item.innerHTML = `
+                    <div class="comment-preview has-comment" data-comment-id="${data.comment.id}">
+                        <div class="d-flex align-items-start gap-2">
+                            ${data.comment.author_photo
+                                ? `<img src="/upload/${data.comment.author_photo}" alt="${commentAuthor}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">`
+                                : `<span class="feed-author-fallback" style="width:30px;height:30px;flex-basis:30px;font-size:0.78rem;">${commentInitial}</span>`}
+                            <div class="flex-grow-1">
+                                <div class="fw-bold small">${commentAuthor}</div>
+                                <div class="comment-text">${data.comment.content}</div>
+                                <button type="button" class="reply-toggle-btn small text-primary border-0 bg-transparent p-0 mt-1 fw-semibold" data-reply-toggle="${data.comment.id}">Reply</button>
+                                <div class="reply-box mt-2" data-reply-box="${data.comment.id}" style="display:none;">
+                                    <textarea class="form-control comment-input" rows="1" placeholder="Write a reply..." data-reply-input="${data.comment.id}"></textarea>
+                                    <button type="button" class="btn btn-brand btn-sm mt-1" data-reply-submit="${data.comment.id}"><i class="bi bi-send me-1"></i>Reply</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                const rt = item.querySelector('[data-reply-toggle]');
+                rt?.addEventListener('click', () => {
+                    const box = document.querySelector(`[data-reply-box="${rt.dataset.replyToggle}"]`);
+                    if (box) { box.style.display = box.style.display === 'none' ? 'block' : 'none'; if (box.style.display === 'block') box.querySelector('textarea').focus(); }
+                });
+                const rs = item.querySelector('[data-reply-submit]');
+                rs?.addEventListener('click', (e) => handleReplySubmit(e.currentTarget.dataset.replySubmit));
+                commentList.appendChild(item);
+                commentInput.value = '';
+                updateCounts(data.counts);
+            });
+
+            shareButton?.addEventListener('click', async () => {
+                const data = await postJson(`/posts/${postId}/shares`);
+                if (!data) return;
+                const isShared = data.shared;
+                shareButton.classList.toggle('is-active', isShared);
+                shareButton.dataset.shared = isShared ? 'true' : 'false';
+                shareButton.querySelector('span').textContent = isShared ? 'Shared' : 'Share';
+                updateCounts(data.counts);
+                shareStatus.textContent = isShared ? 'Shared to profile. Tap again to unshare.' : 'Removed from profile.';
+                setTimeout(() => { shareStatus.textContent = ''; }, 1800);
+            });
+
+            card.querySelectorAll('[data-reply-toggle]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const box = document.querySelector(`[data-reply-box="${btn.dataset.replyToggle}"]`);
+                    if (box) { box.style.display = box.style.display === 'none' ? 'block' : 'none'; if (box.style.display === 'block') box.querySelector('textarea').focus(); }
+                });
+            });
+
+            const handleReplySubmit = async (commentId) => {
+                const input = document.querySelector(`[data-reply-input="${commentId}"]`);
+                if (!input) return;
+                const replyContent = input.value.trim();
+                if (!replyContent) { input.focus(); return; }
+                const data = await postJson(`/posts/${postId}/comments/${commentId}/reply`, { content: replyContent });
+                if (!data) return;
+                const replyAuthor = data.comment.author || 'User';
+                const replyInitial = replyAuthor.charAt(0).toUpperCase();
+                const replyItem = document.createElement('div');
+                replyItem.className = 'comment-preview has-comment reply-item';
+                replyItem.innerHTML = `
+                    <div class="d-flex align-items-start gap-2">
+                        ${data.comment.author_photo
+                            ? `<img src="/upload/${data.comment.author_photo}" alt="${replyAuthor}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">`
+                            : `<span class="feed-author-fallback" style="width:26px;height:26px;flex-basis:26px;font-size:0.7rem;">${replyInitial}</span>`}
+                        <div>
+                            <div class="fw-bold small">${replyAuthor}</div>
+                            <div class="comment-text">${data.comment.content}</div>
+                        </div>
+                    </div>`;
+                const parentComment = card.querySelector(`[data-comment-id="${commentId}"]`);
+                if (parentComment) {
+                    let replyThread = parentComment.parentElement.querySelector('.reply-thread');
+                    if (!replyThread) {
+                        replyThread = document.createElement('div');
+                        replyThread.className = 'reply-thread';
+                        parentComment.after(replyThread);
+                    }
+                    replyThread.appendChild(replyItem);
+                }
+                input.value = '';
+                const box = document.querySelector(`[data-reply-box="${commentId}"]`);
+                if (box) box.style.display = 'none';
+                updateCounts(data.counts);
+            };
+
+            card.querySelectorAll('[data-reply-submit]').forEach(btn => {
+                btn.addEventListener('click', (e) => handleReplySubmit(e.currentTarget.dataset.replySubmit));
+            });
+        })();
+    </script>
 
 </body>
 </html>

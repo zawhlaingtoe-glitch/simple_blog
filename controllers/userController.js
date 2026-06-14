@@ -1,6 +1,7 @@
 const User = require("../models/userModel");
 const Post = require("../models/postModel");
 const Social = require("../models/socialModel");
+const Tag = require("../models/tagModel");
 const { generateToken } = require("../utils/jwt");
 const bcrypt = require('bcrypt');
 const path = require("path");
@@ -12,8 +13,19 @@ const storage = multer.diskStorage({
         cb(null, file.fieldname + "_" + Date.now() + path.extname(file.originalname));
     }
 });
+
+const imageFileFilter = (_req, file, cb) => {
+    if (file.mimetype && file.mimetype.startsWith("image/")) {
+        return cb(null, true);
+    }
+
+    return cb(new Error("Only image files are allowed."));
+};
+
 const upload = multer({
     storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: imageFileFilter,
 }).single("photo");
 
 const normalizeVisibility = (visibility) => visibility === "private" ? "private" : "public";
@@ -152,12 +164,13 @@ exports.logout = (req, res) => {
 exports.profile = async(req, res) => {
     try {
         const user = await User.findById(req.user.id);
-        const posts = await getProfileTimeline(req.user.id, true)
+        const posts = await getProfileTimeline(req.user.id, true);
+        const postsWithTags = await Tag.attachToPosts(posts);
 
         return res.render("users/profile", {
             title: "Your Profile",
             user,
-            posts,
+            posts: postsWithTags,
             error: null,
             success: req.query.success || null
         });
@@ -185,11 +198,12 @@ exports.publicProfile = async(req, res) => {
         }
 
         const posts = await getProfileTimeline(profileUserId, Boolean(isOwnProfile));
+        const postsWithTags = await Tag.attachToPosts(posts);
 
         return res.render("users/public-profile", {
             title: `${user.username || 'User'} Profile`,
             user,
-            posts,
+            posts: postsWithTags,
             isOwnProfile
         });
     } catch (error) {

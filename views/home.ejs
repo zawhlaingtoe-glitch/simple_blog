@@ -118,6 +118,7 @@ const heroPost = latestPosts[0];
                     <div class="row g-3">
                         <% latestPosts.forEach((post, index) => {
                             const delayClass = index === 0 ? '' : index === 1 ? 'delay-100' : 'delay-200';
+                            const postExcerpt = post.content ? post.content.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '';
                         %>
                             <div class="col-lg-4 animate-fade-in-up <%= delayClass %>">
                                 <a href="/posts/<%= post.id %>" class="text-decoration-none text-reset d-block h-100">
@@ -140,14 +141,14 @@ const heroPost = latestPosts[0];
                                             </span>
                                             <h4 class="fw-bold smart-post-title"><%= post.title %></h4>
                                             <p class="smart-post-excerpt">
-                                                <%= post.content ? post.content.replace(/<[^>]*>/g, '') : '' %>
+                                                <%= postExcerpt || 'Open the detail page to read this post.' %>
                                             </p>
                                             <div class="smart-post-footer">
-                                                <span class="article-meta">
+                                                <span class="article-meta smart-post-date">
                                                     <i class="bi bi-calendar3 me-1"></i>
                                                     <%= post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Just now' %>
                                                 </span>
-                                                <span class="badge bg-primary rounded-pill px-3 py-2" style="font-weight:600;font-size:0.72rem;">
+                                                <span class="smart-post-read">
                                                     Read <i class="bi bi-arrow-right ms-1"></i>
                                                 </span>
                                             </div>

@@ -39,18 +39,42 @@ class Social {
                 post_id INT NOT NULL,
                 user_id INT NOT NULL,
                 content TEXT NOT NULL,
+                parent_id INT NULL,
                 created_at DATETIME NOT NULL
             )
         `);
+
+        // Add parent_id column if missing (migration)
+        try {
+            await db.query(
+                "ALTER TABLE post_comments ADD COLUMN parent_id INT NULL AFTER content"
+            );
+        } catch (error) {
+            if (error.code !== "ER_DUP_FIELDNAME" && error.code !== "ER_DUP_FIELD") {
+                throw error;
+            }
+        }
 
         await db.query(`
             CREATE TABLE IF NOT EXISTS post_shares (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 post_id INT NOT NULL,
                 user_id INT NOT NULL,
-                created_at DATETIME NOT NULL
+                created_at DATETIME NOT NULL,
+                UNIQUE KEY unique_post_user_share (post_id, user_id)
             )
         `);
+
+        // Add unique constraint if missing
+        try {
+            await db.query(
+                "ALTER TABLE post_shares ADD UNIQUE KEY unique_post_user_share (post_id, user_id)"
+            );
+        } catch (error) {
+            if (error.code !== "ER_DUP_FIELDNAME" && error.code !== "ER_DUP_KEYNAME" && error.code !== "ER_DUP_FIELD") {
+                throw error;
+            }
+        }
     }
 
     static async attachToPosts(posts, currentUserId = null) {
@@ -69,7 +93,7 @@ class Social {
         );
 
         const [commentRows] = await db.query(
-            `SELECT post_id, COUNT(*) AS count FROM post_comments WHERE post_id IN (${placeholders}) GROUP BY post_id`,
+            `SELECT post_id, COUNT(*) AS count FROM post_comments WHERE parent_id IS NULL AND post_id IN (${placeholders}) GROUP BY post_id`,
             postIds
         );
 
@@ -78,6 +102,7 @@ class Social {
             postIds
         );
 
+        // Fetch all comments (including replies) ordered by created_at
         const [commentDetails] = await db.query(
             `SELECT post_comments.*, USERS.username AS author, USERS.profile_photo AS author_photo
              FROM post_comments
@@ -97,12 +122,19 @@ class Social {
         );
 
         let reactedPostIds = new Set();
+        let sharedPostIds = new Set();
         if (currentUserId) {
             const [reactionMine] = await db.query(
                 `SELECT post_id FROM post_reactions WHERE user_id = ? AND post_id IN (${placeholders})`,
                 [currentUserId, ...postIds]
             );
             reactedPostIds = new Set(reactionMine.map((row) => row.post_id));
+
+            const [shareMine] = await db.query(
+                `SELECT post_id FROM post_shares WHERE user_id = ? AND post_id IN (${placeholders})`,
+                [currentUserId, ...postIds]
+            );
+            sharedPostIds = new Set(shareMine.map((row) => row.post_id));
         }
 
         const countByPost = (rows) => new Map(rows.map((row) => [row.post_id, row.count]));
@@ -110,15 +142,35 @@ class Social {
         const comments = countByPost(commentRows);
         const shares = countByPost(shareRows);
 
-        return posts.map((post) => ({
-            ...post,
-            reaction_count: reactions.get(post.id) || 0,
-            comment_count: comments.get(post.id) || 0,
-            share_count: shares.get(post.id) || 0,
-            current_user_reacted: reactedPostIds.has(post.id),
-            reaction_users: reactionDetails.filter((reaction) => reaction.post_id === post.id),
-            comments: commentDetails.filter((comment) => comment.post_id === post.id)
-        }));
+        // Build nested comment tree per post
+        const buildCommentTree = (flatComments) => {
+            const map = new Map();
+            const roots = [];
+            flatComments.forEach((c) => map.set(c.id, { ...c, replies: [] }));
+            flatComments.forEach((c) => {
+                const node = map.get(c.id);
+                if (c.parent_id && map.has(c.parent_id)) {
+                    map.get(c.parent_id).replies.push(node);
+                } else if (!c.parent_id) {
+                    roots.push(node);
+                }
+            });
+            return roots;
+        };
+
+        return posts.map((post) => {
+            const postComments = commentDetails.filter((comment) => comment.post_id === post.id);
+            return {
+                ...post,
+                reaction_count: reactions.get(post.id) || 0,
+                comment_count: comments.get(post.id) || 0,
+                share_count: shares.get(post.id) || 0,
+                current_user_reacted: reactedPostIds.has(post.id),
+                current_user_shared: sharedPostIds.has(post.id),
+                reaction_users: reactionDetails.filter((reaction) => reaction.post_id === post.id),
+                comments: buildCommentTree(postComments)
+            };
+        });
     }
 
     static async toggleReaction(postId, userId, reactionType = "like") {
@@ -142,12 +194,12 @@ class Social {
         return { reacted: true };
     }
 
-    static async createComment(postId, userId, content) {
+    static async createComment(postId, userId, content, parentId = null) {
         await Social.ensureTables();
 
         const [result] = await db.query(
-            "INSERT INTO post_comments(post_id, user_id, content, created_at) VALUES(?,?,?,?)",
-            [postId, userId, content, new Date()]
+            "INSERT INTO post_comments(post_id, user_id, content, parent_id, created_at) VALUES(?,?,?,?,?)",
+            [postId, userId, content, parentId, new Date()]
         );
 
         const [rows] = await db.query(
@@ -161,22 +213,25 @@ class Social {
         return rows[0];
     }
 
-    static async createShare(postId, userId) {
+    static async toggleShare(postId, userId) {
         await Social.ensureTables();
 
         const [existing] = await db.query(
-            "SELECT id FROM post_shares WHERE post_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT 1",
+            "SELECT id FROM post_shares WHERE post_id = ? AND user_id = ?",
             [postId, userId]
         );
 
         if (existing.length > 0) {
-            return;
+            await db.query("DELETE FROM post_shares WHERE post_id = ? AND user_id = ?", [postId, userId]);
+            return { shared: false };
         }
 
         await db.query(
             "INSERT INTO post_shares(post_id, user_id, created_at) VALUES(?,?,?)",
             [postId, userId, new Date()]
         );
+
+        return { shared: true };
     }
 
     static async findProfileTimeline(userId, includePrivateOwn = false) {
@@ -217,9 +272,9 @@ class Social {
         });
     }
 
-    static async countsForPost(postId) {
+    static async countsForPost(postId, currentUserId = null) {
         const [[reactionCount]] = await db.query("SELECT COUNT(*) AS count FROM post_reactions WHERE post_id = ?", [postId]);
-        const [[commentCount]] = await db.query("SELECT COUNT(*) AS count FROM post_comments WHERE post_id = ?", [postId]);
+        const [[commentCount]] = await db.query("SELECT COUNT(*) AS count FROM post_comments WHERE parent_id IS NULL AND post_id = ?", [postId]);
         const [[shareCount]] = await db.query("SELECT COUNT(*) AS count FROM post_shares WHERE post_id = ?", [postId]);
 
         const [reactionUsers] = await db.query(
@@ -231,11 +286,21 @@ class Social {
             [postId]
         );
 
+        let current_user_shared = false;
+        if (currentUserId) {
+            const [shareMine] = await db.query(
+                "SELECT id FROM post_shares WHERE post_id = ? AND user_id = ?",
+                [postId, currentUserId]
+            );
+            current_user_shared = shareMine.length > 0;
+        }
+
         return {
             reactions: reactionCount.count,
             comments: commentCount.count,
             shares: shareCount.count,
-            reactionUsers
+            reactionUsers,
+            current_user_shared
         };
     }
 }

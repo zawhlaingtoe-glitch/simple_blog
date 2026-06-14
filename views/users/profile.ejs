@@ -126,6 +126,7 @@
                                                 <div class="mb-3">
                                                     <label for="content" class="form-label fw-semibold">Content</label>
                                                     <textarea id="profile-content" name="content" class="form-control summernote-editor" rows="5" placeholder="Write your post..." required></textarea>
+                                                    <div class="form-text" data-editor-status></div>
                                                 </div>
                                                 <div class="mb-3">
                                                     <label for="visibility" class="form-label fw-semibold">Visibility</label>
@@ -155,7 +156,10 @@
                                             <% } else { %>
                                                 <div class="profile-post-grid">
                                                     <% posts.forEach((post) => { %>
-                                                        <% const isSharedPost = post.profile_item_type === 'share'; %>
+                                                        <%
+                                                            const isSharedPost = post.profile_item_type === 'share';
+                                                            const postExcerpt = post.content ? post.content.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '';
+                                                        %>
                                                         <article class="article-card profile-post-card overflow-hidden">
                                                             <div class="profile-post-media">
                                                                 <% if (post.photo) { %>
@@ -174,7 +178,7 @@
                                                                             <%= (post.timeline_at || post.created_at) ? new Date(post.timeline_at || post.created_at).toLocaleDateString() : 'Just now' %>
                                                                         </div>
                                                                         <h4 class="fw-bold mb-0 d-flex align-items-center flex-wrap gap-2">
-                                                                            <%= post.title %>
+                                                                            <a href="/posts/<%= post.id %>" class="feed-title-link"><%= post.title %></a>
                                                                         </h4>
                                                                     </div>
                                                                     <% if (!isSharedPost) { %>
@@ -202,9 +206,10 @@
                                                                         <% } %>
                                                                     <% } %>
                                                                 </div>
-                                                                <div class="text-muted mb-0 feed-content">
-                                                                    <%- post.content %>
-                                                                </div>
+                                                                <p class="feed-excerpt mb-2"><%= postExcerpt || 'Open the detail page to read this post.' %></p>
+                                                                <a href="/posts/<%= post.id %>" class="feed-detail-link">
+                                                                    Read detail <i class="bi bi-arrow-right"></i>
+                                                                </a>
                                                             </div>
                                                         </article>
                                                         <% }) %>
@@ -219,25 +224,92 @@
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.js"></script>
         <script>
+            // Accept either a DOM element or jQuery object
+            const setEditorStatus = (editor, message, isError = false) => {
+                const el = editor.jquery ? editor[0] : editor;
+                const status = (el || editor).closest('.mb-3').querySelector('[data-editor-status]');
+                if (!status) return;
+                status.textContent = message;
+                status.classList.toggle('text-danger', isError);
+                status.classList.toggle('text-primary', !isError && Boolean(message));
+            };
+
+            const uploadSummernoteImage = async(file, editorEl) => {
+                const raw = editorEl.jquery ? editorEl[0] : editorEl;
+
+                if (!file.type.startsWith('image/')) {
+                    setEditorStatus(raw, 'Please choose an image file.', true);
+                    return;
+                }
+
+                if (file.size > 5 * 1024 * 1024) {
+                    setEditorStatus(raw, 'Image must be smaller than 5 MB.', true);
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('photo', file);
+                setEditorStatus(raw, 'Uploading image...');
+
+                try {
+                    const response = await fetch('/posts/editor-image', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { 'Accept': 'application/json' },
+                        body: formData
+                    });
+                    const data = await response.json();
+
+                    if (!response.ok || !data.url) {
+                        setEditorStatus(raw, data.message || 'Image upload failed.', true);
+                        return;
+                    }
+
+                    $(raw).summernote('insertImage', data.url);
+                    setEditorStatus(raw, 'Image added.');
+                    setTimeout(() => setEditorStatus(raw, ''), 1800);
+                } catch (error) {
+                    setEditorStatus(raw, 'Image upload failed. Please try a smaller image.', true);
+                }
+            };
+
+            // Init once — never destroy/re-init
+            let profileEditorInited = false;
+
             const initProfileEditor = () => {
+                if (profileEditorInited) return;
+                profileEditorInited = true;
+
                 const editor = $('.summernote-editor');
-                if (editor.next('.note-editor').length) return;
 
                 editor.summernote({
                     placeholder: 'Write your post...',
                     tabsize: 2,
-                    height: 220,
+                    height: 260,
+                    dialogsInBody: true,  // ← prevents modals from getting trapped inside collapse
                     toolbar: [
                         ['style', ['style']],
                         ['font', ['bold', 'italic', 'underline', 'clear']],
                         ['para', ['ul', 'ol', 'paragraph']],
                         ['insert', ['link', 'picture']],
                         ['view', ['codeview']]
-                    ]
+                    ],
+                    callbacks: {
+                        onImageUpload: function(files) {
+                            Array.from(files).forEach((file) => uploadSummernoteImage(file, this));
+                        }
+                    }
                 });
             };
 
-            document.getElementById('profileComposer')?.addEventListener('shown.bs.collapse', initProfileEditor);
+            const composerEl = document.getElementById('profileComposer');
+            if (composerEl) {
+                if (composerEl.classList.contains('show')) {
+                    // Collapse already open — init on next frame so layout is stable
+                    requestAnimationFrame(initProfileEditor);
+                }
+                composerEl.addEventListener('shown.bs.collapse', initProfileEditor, { once: true });
+            }
         </script>
         </body>
 

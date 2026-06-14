@@ -1,6 +1,7 @@
 const Post = require("../models/postModel");
 const User = require("../models/userModel");
 const Social = require("../models/socialModel");
+const Tag = require("../models/tagModel");
 const path = require("path");
 const multer = require("multer")
 const jwt = require("jsonwebtoken");
@@ -11,8 +12,19 @@ const storage = multer.diskStorage({
         cb(null, file.fieldname + "_" + Date.now() + path.extname(file.originalname));
     }
 });
+
+const imageFileFilter = (_req, file, cb) => {
+    if (file.mimetype && file.mimetype.startsWith("image/")) {
+        return cb(null, true);
+    }
+
+    return cb(new Error("Only image files are allowed."));
+};
+
 const upload = multer({
     storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: imageFileFilter,
 }).single("photo");
 
 const getTokenFromCookie = (req) => {
@@ -51,11 +63,22 @@ const sanitizeContent = (content = "") => {
 
 exports.index = async(req, res) => {
     try {
-
-
         const currentUserId = getCurrentUserId(req);
-        const posts = await Social.attachToPosts(await Post.findAll(5, 0, currentUserId), currentUserId);
+        const page = parseInt(req.query.page) || 1;
+        const limit = 6;
+        const offset = (page - 1) * limit;
+
+        const totalPosts = await Post.countAll(currentUserId);
+        const totalPages = Math.ceil(totalPosts / limit);
+
+        let posts = await Post.findAll(limit, offset, currentUserId);
+        posts = await Tag.attachToPosts(posts);
+        posts = await Social.attachToPosts(posts, currentUserId);
+
         const currentUser = currentUserId ? await User.findById(currentUserId) : null;
+        const popularTags = await Tag.findAllWithCounts(15);
+
+        const searchQuery = req.query.search || "";
         const messages = {
             not_owner: "You can only delete your own posts.",
             not_found: "That post was not found."
@@ -66,10 +89,95 @@ exports.index = async(req, res) => {
             title: "Post List",
             currentUserId,
             currentUser,
+            popularTags,
+            searchQuery,
+            pagination: { page, totalPages, total: totalPosts },
             error: messages[req.query.error] || null
         });
     } catch (error) {
         console.error("Error fetching posts: ", error);
+        res.status(500).send("Server Error");
+    }
+};
+
+exports.search = async(req, res) => {
+    try {
+        const currentUserId = getCurrentUserId(req);
+        const searchQuery = (req.query.q || "").trim();
+        const page = parseInt(req.query.page) || 1;
+        const limit = 6;
+        const offset = (page - 1) * limit;
+
+        if (!searchQuery) {
+            return res.redirect("/posts");
+        }
+
+        const totalPosts = await Post.searchCount(searchQuery, currentUserId);
+        const totalPages = Math.ceil(totalPosts / limit);
+
+        let posts = await Post.search(searchQuery, limit, offset, currentUserId);
+        posts = await Tag.attachToPosts(posts);
+        posts = await Social.attachToPosts(posts, currentUserId);
+
+        const currentUser = currentUserId ? await User.findById(currentUserId) : null;
+        const popularTags = await Tag.findAllWithCounts(15);
+
+        res.render("posts/postlist", {
+            posts: posts || [],
+            title: `Search: ${searchQuery}`,
+            currentUserId,
+            currentUser,
+            popularTags,
+            searchQuery,
+            pagination: { page, totalPages, total: totalPosts },
+            error: null
+        });
+    } catch (error) {
+        console.error("Error searching posts:", error);
+        res.status(500).send("Server Error");
+    }
+};
+
+exports.getPostsByTag = async(req, res) => {
+    try {
+        const slug = req.params.slug;
+        const currentUserId = getCurrentUserId(req);
+        const page = parseInt(req.query.page) || 1;
+        const limit = 6;
+        const offset = (page - 1) * limit;
+
+        const tag = await Tag.findBySlug(slug);
+        if (!tag) {
+            return res.status(404).render("error", {
+                title: "Tag Not Found",
+                message: "That tag does not exist.",
+                statusCode: 404
+            });
+        }
+
+        const totalPosts = await Post.countByTag(slug, currentUserId);
+        const totalPages = Math.ceil(totalPosts / limit);
+
+        let posts = await Post.findByTag(slug, limit, offset, currentUserId);
+        posts = await Tag.attachToPosts(posts);
+        posts = await Social.attachToPosts(posts, currentUserId);
+
+        const currentUser = currentUserId ? await User.findById(currentUserId) : null;
+        const popularTags = await Tag.findAllWithCounts(15);
+
+        res.render("posts/postlist", {
+            posts: posts || [],
+            title: `#${tag.name}`,
+            currentUserId,
+            currentUser,
+            popularTags,
+            activeTag: tag,
+            searchQuery: "",
+            pagination: { page, totalPages, total: totalPosts },
+            error: null
+        });
+    } catch (error) {
+        console.error("Error fetching posts by tag:", error);
         res.status(500).send("Server Error");
     }
 };
@@ -97,8 +205,9 @@ exports.showPost = async(req, res) => {
             });
         }
 
-        // Attach social data
-        const postsWithSocial = await Social.attachToPosts([post], currentUserId);
+        // Attach tags and social data
+        const postWithTags = await Tag.attachToPosts([post]);
+        const postsWithSocial = await Social.attachToPosts(postWithTags, currentUserId);
         const postWithSocial = postsWithSocial[0] || post;
 
         const currentUser = currentUserId ? await User.findById(currentUserId) : null;
@@ -136,11 +245,16 @@ exports.create = async(req, res) => {
             return res.status(500).send("Error uploading photo");
         }
 
-        const { title, content, visibility } = req.body;
+        const { title, content, visibility, tags } = req.body;
+
+        // Parse tags from comma-separated string
+        const tagList = tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : [];
+
         const photo = req.file ? req.file.filename : null;
 
         try {
-            await Post.createPost(req.user.id, title, sanitizeContent(content), photo, normalizeVisibility(visibility));
+            const postId = await Post.createPost(req.user.id, title, sanitizeContent(content), photo, normalizeVisibility(visibility));
+            await Tag.syncPostTags(postId, tagList);
             res.redirect("/posts");
         } catch (error) {
             console.error("Error creating post: ", error);
@@ -150,6 +264,30 @@ exports.create = async(req, res) => {
 
 
 }
+
+exports.uploadEditorImage = async(req, res) => {
+    upload(req, res, (err) => {
+        if (err) {
+            console.error("Error uploading editor image: ", err);
+            return res.status(400).json({
+                status: "Fail!",
+                message: err.message || "Could not upload image."
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                status: "Fail!",
+                message: "Please choose an image."
+            });
+        }
+
+        return res.status(201).json({
+            status: "Success!",
+            url: `/upload/${req.file.filename}`
+        });
+    });
+};
 
 exports.showEditForm = async(req, res) => {
     try {
@@ -163,9 +301,13 @@ exports.showEditForm = async(req, res) => {
             return res.status(403).send("You can only edit your own post");
         }
 
+        const postTags = await Tag.findByPostId(post.id);
+        const tagsString = postTags.map(t => t.name).join(", ");
+
         return res.render("posts/edit", {
             title: "Edit Post",
-            post
+            post,
+            tagsString
         });
     } catch (error) {
         console.error("Error loading edit form: ", error);
@@ -213,9 +355,12 @@ exports.updatePost = async(req, res) => {
         }
 
         const postId = req.params.id
-        const { title, content, visibility } = req.body;
+        const { title, content, visibility, tags } = req.body;
         const userId = req.user.id;
         const photo = req.file ? req.file.filename : null
+
+        // Parse tags from comma-separated string
+        const tagList = tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : [];
 
         try {
             const post = await Post.findByid(postId);
@@ -242,6 +387,7 @@ exports.updatePost = async(req, res) => {
             }
 
             await Post.updatePost(postId, title, sanitizeContent(content), photo, normalizeVisibility(visibility), userId)
+            await Tag.syncPostTags(postId, tagList);
             const updateDatabase = await Post.findByid(postId)
 
             if (req.accepts("html")) {
@@ -277,7 +423,7 @@ exports.toggleReaction = async(req, res) => {
         }
 
         const result = await Social.toggleReaction(req.params.id, req.user.id, req.body.reaction_type || "like");
-        const counts = await Social.countsForPost(req.params.id);
+        const counts = await Social.countsForPost(req.params.id, req.user.id);
 
         return res.status(200).json({
             status: "Success!",
@@ -306,7 +452,7 @@ exports.createComment = async(req, res) => {
         }
 
         const comment = await Social.createComment(req.params.id, req.user.id, content.trim());
-        const counts = await Social.countsForPost(req.params.id);
+        const counts = await Social.countsForPost(req.params.id, req.user.id);
 
         return res.status(201).json({
             status: "Success!",
@@ -319,7 +465,7 @@ exports.createComment = async(req, res) => {
     }
 };
 
-exports.createShare = async(req, res) => {
+exports.toggleShare = async(req, res) => {
     try {
         const post = await Post.findByid(req.params.id);
         if (!post) {
@@ -329,16 +475,47 @@ exports.createShare = async(req, res) => {
             return res.status(403).json({ status: "Fail!", message: "Access denied." });
         }
 
-        await Social.createShare(req.params.id, req.user.id);
-        const counts = await Social.countsForPost(req.params.id);
+        const result = await Social.toggleShare(req.params.id, req.user.id);
+        const counts = await Social.countsForPost(req.params.id, req.user.id);
 
-        return res.status(201).json({
+        return res.status(200).json({
             status: "Success!",
-            message: "Shared to your profile.",
+            shared: result.shared,
             counts
         });
     } catch (error) {
-        console.error("Share error:", error);
+        console.error("Share toggle error:", error);
+        return res.status(500).json({ status: "Fail!", message: "Internal Server Error!" });
+    }
+};
+
+exports.replyToComment = async(req, res) => {
+    try {
+        const { content } = req.body;
+        if (!content || !content.trim()) {
+            return res.status(400).json({ status: "Fail!", message: "Reply cannot be empty." });
+        }
+
+        const post = await Post.findByid(req.params.id);
+        if (!post) {
+            return res.status(404).json({ status: "Fail!", message: "Post not found." });
+        }
+        if (post.visibility === 'private' && String(post.user_id) !== String(req.user.id)) {
+            return res.status(403).json({ status: "Fail!", message: "Access denied." });
+        }
+
+        const parentId = req.params.commentId;
+        const reply = await Social.createComment(req.params.id, req.user.id, content.trim(), parentId);
+        const counts = await Social.countsForPost(req.params.id, req.user.id);
+
+        return res.status(201).json({
+            status: "Success!",
+            comment: reply,
+            parent_id: parentId,
+            counts
+        });
+    } catch (error) {
+        console.error("Reply error:", error);
         return res.status(500).json({ status: "Fail!", message: "Internal Server Error!" });
     }
 };

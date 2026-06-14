@@ -59,6 +59,7 @@
                                             const viewerName = currentUser && currentUser.username ? currentUser.username : 'You';
                                             const viewerInitial = viewerName.charAt(0).toUpperCase();
                                             const viewerPhoto = currentUser && currentUser.profile_photo ? currentUser.profile_photo : null;
+                                            const postExcerpt = post.content ? post.content.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '';
                                         %>
                                             <article class="feed-card" id="post-<%= post.id %>" data-post-id="<%= post.id %>">
                                                 <div class="p-3 p-sm-4">
@@ -96,12 +97,15 @@
                                                     </div>
 
                                                     <h4 class="fw-bold mt-3 mb-2 d-flex align-items-center flex-wrap gap-2">
-                                                        <%= post.title %>
+                                                        <a href="/posts/<%= post.id %>" class="feed-title-link"><%= post.title %></a>
                                                         <% if (post.visibility === 'private') { %>
                                                             <span class="badge bg-warning text-dark"><i class="bi bi-lock-fill me-1"></i>Private</span>
                                                         <% } %>
                                                     </h4>
-                                                    <div class="feed-content mb-0"><%- post.content %></div>
+                                                    <p class="feed-excerpt mb-3"><%= postExcerpt || 'Open the detail page to read this post.' %></p>
+                                                    <a href="/posts/<%= post.id %>" class="feed-detail-link">
+                                                        Read detail <i class="bi bi-arrow-right"></i>
+                                                    </a>
                                                 </div>
 
                                                 <% if (post.photo) { %>
@@ -144,8 +148,8 @@
                                                                     <button type="button" class="feed-action" data-comment-toggle>
                                                                         <i class="bi bi-chat-left me-1"></i><span>Comment</span>
                                                                     </button>
-                                                                    <button type="button" class="feed-action" data-share-button data-share-url="/posts#post-<%= post.id %>">
-                                                                        <i class="bi bi-share me-1"></i><span>Share</span>
+                                                                    <button type="button" class="feed-action <%= post.current_user_shared ? 'is-active' : '' %>" data-share-button data-shared="<%= post.current_user_shared ? 'true' : 'false' %>">
+                                                                        <i class="bi bi-share me-1"></i><span><%= post.current_user_shared ? 'Shared' : 'Share' %></span>
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -156,19 +160,49 @@
                                                                         <% post.comments.forEach(comment => {
                                                                             const commentAuthor = comment.author || 'User';
                                                                             const commentInitial = commentAuthor.charAt(0).toUpperCase();
+                                                                            const replies = comment.replies || [];
                                                                         %>
-                                                                            <div class="comment-preview has-comment">
-                                                                                <div class="d-flex align-items-start gap-2">
-                                                                                    <% if (comment.author_photo) { %>
-                                                                                        <img src="/upload/<%= comment.author_photo %>" alt="<%= commentAuthor %>" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">
-                                                                                        <% } else { %>
-                                                                                            <span class="feed-author-fallback" style="width:30px;height:30px;flex-basis:30px;font-size:0.78rem;"><%= commentInitial %></span>
-                                                                                            <% } %>
-                                                                                                <div>
-                                                                                                    <div class="fw-bold small"><%= commentAuthor %></div>
-                                                                                                    <div><%= comment.content %></div>
-                                                                                                </div>
+                                                                            <div class="comment-thread">
+                                                                                <div class="comment-preview has-comment" data-comment-id="<%= comment.id %>">
+                                                                                    <div class="d-flex align-items-start gap-2">
+                                                                                        <% if (comment.author_photo) { %>
+                                                                                            <img src="/upload/<%= comment.author_photo %>" alt="<%= commentAuthor %>" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">
+                                                                                            <% } else { %>
+                                                                                                <span class="feed-author-fallback" style="width:30px;height:30px;flex-basis:30px;font-size:0.78rem;"><%= commentInitial %></span>
+                                                                                                <% } %>
+                                                                                                    <div class="flex-grow-1">
+                                                                                                        <div class="fw-bold small"><%= commentAuthor %></div>
+                                                                                                        <div class="comment-text"><%= comment.content %></div>
+                                                                                                        <button type="button" class="reply-toggle-btn small text-primary border-0 bg-transparent p-0 mt-1 fw-semibold" data-reply-toggle="<%= comment.id %>">Reply</button>
+                                                                                                        <div class="reply-box mt-2" data-reply-box="<%= comment.id %>" style="display:none;">
+                                                                                                            <textarea class="form-control comment-input" rows="1" placeholder="Write a reply..." data-reply-input="<%= comment.id %>"></textarea>
+                                                                                                            <button type="button" class="btn btn-brand btn-sm mt-1" data-reply-submit="<%= comment.id %>"><i class="bi bi-send me-1"></i>Reply</button>
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                    </div>
                                                                                 </div>
+                                                                                <% if (replies.length > 0) { %>
+                                                                                    <div class="reply-thread">
+                                                                                        <% replies.forEach(reply => {
+                                                                                            const replyAuthor = reply.author || 'User';
+                                                                                            const replyInitial = replyAuthor.charAt(0).toUpperCase();
+                                                                                        %>
+                                                                                            <div class="comment-preview has-comment reply-item">
+                                                                                                <div class="d-flex align-items-start gap-2">
+                                                                                                    <% if (reply.author_photo) { %>
+                                                                                                        <img src="/upload/<%= reply.author_photo %>" alt="<%= replyAuthor %>" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">
+                                                                                                        <% } else { %>
+                                                                                                            <span class="feed-author-fallback" style="width:26px;height:26px;flex-basis:26px;font-size:0.7rem;"><%= replyInitial %></span>
+                                                                                                            <% } %>
+                                                                                                                <div>
+                                                                                                                    <div class="fw-bold small"><%= replyAuthor %></div>
+                                                                                                                    <div class="comment-text"><%= reply.content %></div>
+                                                                                                                </div>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <% }) %>
+                                                                                    </div>
+                                                                                    <% } %>
                                                                             </div>
                                                                             <% }) %>
                                                                                 <% } %>
@@ -204,9 +238,9 @@
                         <div class="d-flex flex-column gap-2 small text-muted">
                             <div><i class="bi bi-check-circle text-primary me-2"></i>Mobile-first feed layout</div>
                             <div><i class="bi bi-check-circle text-primary me-2"></i>Owner-only edit/delete</div>
-                            <div><i class="bi bi-circle me-2"></i>Comments</div>
-                            <div><i class="bi bi-circle me-2"></i>Likes</div>
-                            <div><i class="bi bi-circle me-2"></i>Search posts</div>
+                            <div><i class="bi bi-check-circle text-primary me-2"></i>Comments with replies</div>
+                            <div><i class="bi bi-check-circle text-primary me-2"></i>Likes / Reactions</div>
+                            <div><i class="bi bi-check-circle text-primary me-2"></i>Share / Unshare</div>
                         </div>
                     </div>
                     <div class="feed-panel p-4">
@@ -267,6 +301,14 @@
                         `Liked by ${counts.reactionUsers.map((user) => user.author).join(', ')}` :
                         '';
                 }
+                // Update share button active state from counts response
+                if (shareButton && counts.current_user_shared !== undefined) {
+                    const isShared = counts.current_user_shared;
+                    shareButton.classList.toggle('is-active', isShared);
+                    shareButton.dataset.shared = isShared ? 'true' : 'false';
+                    shareButton.querySelector('span').textContent = isShared ? 'Shared' : 'Share';
+                    shareButton.querySelector('i').className = 'bi bi-share me-1';
+                }
             };
 
             reactionButton?.addEventListener('click', async() => {
@@ -301,43 +343,117 @@
                 const commentAuthor = data.comment.author || 'User';
                 const commentInitial = commentAuthor.charAt(0).toUpperCase();
                 const commentItem = document.createElement('div');
-                commentItem.className = 'comment-preview has-comment';
+                commentItem.className = 'comment-thread';
                 commentItem.innerHTML = `
-                    <div class="d-flex align-items-start gap-2">
-                        ${data.comment.author_photo
-                            ? `<img src="/upload/${data.comment.author_photo}" alt="${commentAuthor}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">`
-                            : `<span class="feed-author-fallback" style="width:30px;height:30px;flex-basis:30px;font-size:0.78rem;">${commentInitial}</span>`
-                        }
-                        <div>
-                            <div class="fw-bold small"></div>
-                            <div></div>
+                    <div class="comment-preview has-comment" data-comment-id="${data.comment.id}">
+                        <div class="d-flex align-items-start gap-2">
+                            ${data.comment.author_photo
+                                ? `<img src="/upload/${data.comment.author_photo}" alt="${commentAuthor}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">`
+                                : `<span class="feed-author-fallback" style="width:30px;height:30px;flex-basis:30px;font-size:0.78rem;">${commentInitial}</span>`
+                            }
+                            <div class="flex-grow-1">
+                                <div class="fw-bold small">${commentAuthor}</div>
+                                <div class="comment-text">${data.comment.content}</div>
+                                <button type="button" class="reply-toggle-btn small text-primary border-0 bg-transparent p-0 mt-1 fw-semibold" data-reply-toggle="${data.comment.id}">Reply</button>
+                                <div class="reply-box mt-2" data-reply-box="${data.comment.id}" style="display:none;">
+                                    <textarea class="form-control comment-input" rows="1" placeholder="Write a reply..." data-reply-input="${data.comment.id}"></textarea>
+                                    <button type="button" class="btn btn-brand btn-sm mt-1" data-reply-submit="${data.comment.id}"><i class="bi bi-send me-1"></i>Reply</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
-                commentItem.querySelector('.fw-bold').textContent = commentAuthor;
-                commentItem.querySelector('.fw-bold + div').textContent = data.comment.content;
+                // Wire up reply toggle for new comment
+                const replyToggle = commentItem.querySelector('[data-reply-toggle]');
+                const replyBox = commentItem.querySelector('[data-reply-box]');
+                replyToggle?.addEventListener('click', () => {
+                    const box = document.querySelector(`[data-reply-box="${replyToggle.dataset.replyToggle}"]`);
+                    if (box) {
+                        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+                        if (box.style.display === 'block') box.querySelector('textarea').focus();
+                    }
+                });
+                // Wire up reply submit for new comment
+                const replySubmit = commentItem.querySelector('[data-reply-submit]');
+                replySubmit?.addEventListener('click', handleReplySubmit);
+
                 commentList.appendChild(commentItem);
                 commentInput.value = '';
                 updateCounts(data.counts);
             });
 
+            // Share toggle
             shareButton?.addEventListener('click', async() => {
-                const shareUrl = `${window.location.origin}${shareButton.dataset.shareUrl}`;
                 const data = await postJson(`/posts/${postId}/shares`);
                 if (!data) return;
 
-                try {
-                    await navigator.clipboard.writeText(shareUrl);
-                    updateCounts(data.counts);
-                    shareButton.classList.add('is-active');
-                    shareStatus.textContent = 'Shared to profile. Link copied';
-                    setTimeout(() => {
-                        shareStatus.textContent = '';
-                        shareButton.classList.remove('is-active');
-                    }, 1800);
-                } catch (_error) {
-                    shareStatus.textContent = shareUrl;
+                const isShared = data.shared;
+                shareButton.classList.toggle('is-active', isShared);
+                shareButton.dataset.shared = isShared ? 'true' : 'false';
+                shareButton.querySelector('span').textContent = isShared ? 'Shared' : 'Share';
+                updateCounts(data.counts);
+                shareStatus.textContent = isShared ? 'Shared to profile. Tap again to unshare.' : 'Removed from profile.';
+                setTimeout(() => {
+                    shareStatus.textContent = '';
+                }, 1800);
+            });
+
+            // Reply toggle buttons
+            card.querySelectorAll('[data-reply-toggle]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const box = document.querySelector(`[data-reply-box="${btn.dataset.replyToggle}"]`);
+                    if (box) {
+                        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+                        if (box.style.display === 'block') box.querySelector('textarea').focus();
+                    }
+                });
+            });
+
+            // Reply submit handler
+            const handleReplySubmit = async(btn) => {
+                const targetId = btn.target?.dataset?.replySubmit || btn.dataset?.replySubmit;
+                if (!targetId) return;
+                const input = document.querySelector(`[data-reply-input="${targetId}"]`);
+                if (!input) return;
+                const replyContent = input.value.trim();
+                if (!replyContent) { input.focus(); return; }
+
+                const data = await postJson(`/posts/${postId}/comments/${targetId}/reply`, { content: replyContent });
+                if (!data) return;
+
+                const replyAuthor = data.comment.author || 'User';
+                const replyInitial = replyAuthor.charAt(0).toUpperCase();
+                const replyItem = document.createElement('div');
+                replyItem.className = 'comment-preview has-comment reply-item';
+                replyItem.innerHTML = `
+                    <div class="d-flex align-items-start gap-2">
+                        ${data.comment.author_photo
+                            ? `<img src="/upload/${data.comment.author_photo}" alt="${replyAuthor}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">`
+                            : `<span class="feed-author-fallback" style="width:26px;height:26px;flex-basis:26px;font-size:0.7rem;">${replyInitial}</span>`
+                        }
+                        <div>
+                            <div class="fw-bold small">${replyAuthor}</div>
+                            <div class="comment-text">${data.comment.content}</div>
+                        </div>
+                    </div>
+                `;
+                const parentComment = card.querySelector(`[data-comment-id="${targetId}"]`);
+                if (parentComment) {
+                    let replyThread = parentComment.parentElement.querySelector('.reply-thread');
+                    if (!replyThread) {
+                        replyThread = document.createElement('div');
+                        replyThread.className = 'reply-thread';
+                        parentComment.after(replyThread);
+                    }
+                    replyThread.appendChild(replyItem);
                 }
+                input.value = '';
+                document.querySelector(`[data-reply-box="${targetId}"]`).style.display = 'none';
+                updateCounts(data.counts);
+            };
+
+            card.querySelectorAll('[data-reply-submit]').forEach(btn => {
+                btn.addEventListener('click', (e) => handleReplySubmit(e.currentTarget));
             });
         });
     </script>

@@ -7,8 +7,8 @@ const axios = require('axios')
 const jwt = require("jsonwebtoken");
 const app = express();
 dotenv.config();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cors());
 app.use(morgan('dev'));
 app.use((req, res, next) => {
@@ -20,6 +20,10 @@ app.set("views", path.join(__dirname, "views"))
 app.use("/upload", express.static(path.join(__dirname, "public/upload")));
 
 const User = require("./models/userModel");
+const Tag = require("./models/tagModel");
+
+// Ensure tag tables exist on startup
+Tag.ensureTables().catch(err => console.error("Tag table error:", err));
 
 // Manual cookie parser helper for global auth middleware
 const getTokenFromCookie = (req) => {
@@ -31,7 +35,7 @@ const getTokenFromCookie = (req) => {
 };
 
 // Global authentication status middleware
-app.use(async (req, res, next) => {
+app.use(async(req, res, next) => {
     const token = getTokenFromCookie(req);
     res.locals.currentUser = null;
     res.locals.isLoggedIn = false;
@@ -60,7 +64,7 @@ const postRoute = require("./routes/postRoute");
 const Post = require("./models/postModel");
 app.get("/", async(req, res) => {
     try {
-        const posts = await Post.findAll(6, 0, req.user?.id || null);
+        const posts = await Post.findAll(6, 0, req.user ?.id || null);
         return res.render("home", {
             title: "Home",
             posts: posts || []

@@ -29,6 +29,7 @@
                                     <div class="mb-3">
                                         <label for="content" class="form-label fw-semibold">Content</label>
                                         <textarea id="content" name="content" class="form-control summernote-editor" rows="9" required><%= post.content %></textarea>
+                                        <div class="form-text" data-editor-status></div>
                                     </div>
 
                                     <div class="mb-3">
@@ -61,6 +62,53 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.js"></script>
     <script>
+        const setEditorStatus = (editor, message, isError = false) => {
+            const status = editor.closest('.mb-3')?.querySelector('[data-editor-status]');
+            if (!status) return;
+            status.textContent = message;
+            status.classList.toggle('text-danger', isError);
+            status.classList.toggle('text-primary', !isError && Boolean(message));
+        };
+
+        const uploadSummernoteImage = async(file, editor) => {
+            if (!file.type.startsWith('image/')) {
+                setEditorStatus(editor, 'Please choose an image file.', true);
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                setEditorStatus(editor, 'Image must be smaller than 5 MB.', true);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('photo', file);
+            setEditorStatus(editor, 'Uploading image...');
+
+            try {
+                const response = await fetch('/posts/editor-image', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (!response.ok || !data.url) {
+                    setEditorStatus(editor, data.message || 'Image upload failed.', true);
+                    return;
+                }
+
+                $(editor).summernote('insertImage', data.url);
+                setEditorStatus(editor, 'Image added.');
+                setTimeout(() => setEditorStatus(editor, ''), 1800);
+            } catch (error) {
+                setEditorStatus(editor, 'Image upload failed. Please try a smaller image.', true);
+            }
+        };
+
         $('.summernote-editor').summernote({
             placeholder: 'Write your post...',
             tabsize: 2,
@@ -71,7 +119,12 @@
                 ['para', ['ul', 'ol', 'paragraph']],
                 ['insert', ['link', 'picture']],
                 ['view', ['codeview']]
-            ]
+            ],
+            callbacks: {
+                onImageUpload: function(files) {
+                    Array.from(files).forEach((file) => uploadSummernoteImage(file, this));
+                }
+            }
         });
     </script>
     </body>

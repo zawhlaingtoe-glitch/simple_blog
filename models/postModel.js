@@ -140,6 +140,156 @@ class Post {
             throw error;
         }
     }
+
+    static async findByTag(slug, limit = 10, offset = 0, currentUserId = null) {
+        try {
+            await Post.ensureVisibilityColumn();
+
+            let query = "";
+            let params = [];
+
+            if (currentUserId) {
+                query = `SELECT DISTINCT POSTS.*, username AS author, USERS.profile_photo AS author_photo
+                         FROM POSTS
+                         JOIN post_tags ON POSTS.id = post_tags.post_id
+                         JOIN tags ON tags.id = post_tags.tag_id
+                         JOIN USERS ON POSTS.user_id = USERS.id
+                         WHERE tags.slug = ?
+                           AND (POSTS.visibility = 'public' OR POSTS.user_id = ?)
+                         ORDER BY POSTS.id DESC
+                         LIMIT ? OFFSET ?`;
+                params = [slug, currentUserId, limit, offset];
+            } else {
+                query = `SELECT DISTINCT POSTS.*, username AS author, USERS.profile_photo AS author_photo
+                         FROM POSTS
+                         JOIN post_tags ON POSTS.id = post_tags.post_id
+                         JOIN tags ON tags.id = post_tags.tag_id
+                         JOIN USERS ON POSTS.user_id = USERS.id
+                         WHERE tags.slug = ? AND POSTS.visibility = 'public'
+                         ORDER BY POSTS.id DESC
+                         LIMIT ? OFFSET ?`;
+                params = [slug, limit, offset];
+            }
+
+            const [rows] = await db.query(query, params);
+            return rows;
+        } catch (error) {
+            console.error("Error fetching posts by tag:", error);
+            throw error;
+        }
+    }
+
+    static async search(query, limit = 10, offset = 0, currentUserId = null) {
+        try {
+            await Post.ensureVisibilityColumn();
+            const searchTerm = `%${query}%`;
+            let sql = "";
+            let params = [];
+
+            if (currentUserId) {
+                sql = `SELECT POSTS.*, username AS author, USERS.profile_photo AS author_photo
+                       FROM POSTS
+                       LEFT JOIN USERS ON POSTS.user_id = USERS.id
+                       WHERE (POSTS.title LIKE ? OR POSTS.content LIKE ?)
+                         AND (POSTS.visibility = 'public' OR POSTS.user_id = ?)
+                       ORDER BY POSTS.id DESC LIMIT ? OFFSET ?`;
+                params = [searchTerm, searchTerm, currentUserId, limit, offset];
+            } else {
+                sql = `SELECT POSTS.*, username AS author, USERS.profile_photo AS author_photo
+                       FROM POSTS
+                       LEFT JOIN USERS ON POSTS.user_id = USERS.id
+                       WHERE (POSTS.title LIKE ? OR POSTS.content LIKE ?)
+                         AND POSTS.visibility = 'public'
+                       ORDER BY POSTS.id DESC LIMIT ? OFFSET ?`;
+                params = [searchTerm, searchTerm, limit, offset];
+            }
+
+            const [rows] = await db.query(sql, params);
+            return rows;
+        } catch (error) {
+            console.error("Error searching posts:", error);
+            throw error;
+        }
+    }
+
+    static async searchCount(query, currentUserId = null) {
+        try {
+            await Post.ensureVisibilityColumn();
+            const searchTerm = `%${query}%`;
+            let sql = "";
+            let params = [];
+
+            if (currentUserId) {
+                sql = `SELECT COUNT(*) AS total FROM POSTS
+                       WHERE (title LIKE ? OR content LIKE ?)
+                         AND (visibility = 'public' OR user_id = ?)`;
+                params = [searchTerm, searchTerm, currentUserId];
+            } else {
+                sql = `SELECT COUNT(*) AS total FROM POSTS
+                       WHERE (title LIKE ? OR content LIKE ?)
+                         AND visibility = 'public'`;
+                params = [searchTerm, searchTerm];
+            }
+
+            const [[row]] = await db.query(sql, params);
+            return row.total;
+        } catch (error) {
+            console.error("Error counting search results:", error);
+            throw error;
+        }
+    }
+
+    static async countByTag(slug, currentUserId = null) {
+        try {
+            let query = "";
+            let params = [];
+
+            if (currentUserId) {
+                query = `SELECT COUNT(DISTINCT POSTS.id) AS total
+                         FROM POSTS
+                         JOIN post_tags ON POSTS.id = post_tags.post_id
+                         JOIN tags ON tags.id = post_tags.tag_id
+                         WHERE tags.slug = ?
+                           AND (POSTS.visibility = 'public' OR POSTS.user_id = ?)`;
+                params = [slug, currentUserId];
+            } else {
+                query = `SELECT COUNT(DISTINCT POSTS.id) AS total
+                         FROM POSTS
+                         JOIN post_tags ON POSTS.id = post_tags.post_id
+                         JOIN tags ON tags.id = post_tags.tag_id
+                         WHERE tags.slug = ? AND POSTS.visibility = 'public'`;
+                params = [slug];
+            }
+
+            const [[row]] = await db.query(query, params);
+            return row.total;
+        } catch (error) {
+            console.error("Error counting posts by tag:", error);
+            throw error;
+        }
+    }
+
+    static async countAll(currentUserId = null) {
+        try {
+            await Post.ensureVisibilityColumn();
+
+            let query = "";
+            let params = [];
+
+            if (currentUserId) {
+                query = `SELECT COUNT(*) AS total FROM POSTS WHERE visibility = 'public' OR user_id = ?`;
+                params = [currentUserId];
+            } else {
+                query = `SELECT COUNT(*) AS total FROM POSTS WHERE visibility = 'public'`;
+            }
+
+            const [[row]] = await db.query(query, params);
+            return row.total;
+        } catch (error) {
+            console.error("Error counting posts:", error);
+            throw error;
+        }
+    }
 }
 
 module.exports = Post;
