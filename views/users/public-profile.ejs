@@ -9,13 +9,13 @@ const profilePhoto = user && user.profile_photo ? user.profile_photo : null;
 <main class="py-5">
     <section class="container">
         <div class="hero-panel overflow-hidden mb-4 animate-scale-in">
-            <div class="p-4 p-md-5 text-white" style="background: linear-gradient(135deg, #111827, #1d4ed8);">
+            <div class="p-4 p-md-5 text-white profile-summary-card">
                 <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-4">
                     <div class="d-flex align-items-end gap-3">
                         <% if (profilePhoto) { %>
                             <img src="/upload/<%= profilePhoto %>" alt="<%= displayName %>" class="bg-white shadow" style="width:88px;height:88px;border-radius:50%;object-fit:cover;">
                         <% } else { %>
-                            <div class="d-flex align-items-center justify-content-center bg-white text-primary fw-bold shadow" style="width:88px;height:88px;border-radius:50%;font-size:2rem;">
+                            <div class="d-flex align-items-center justify-content-center fw-bold shadow" style="width:88px;height:88px;border-radius:50%;font-size:2rem;background:var(--card-bg);color:var(--brand);">
                                 <%= initial %>
                             </div>
                         <% } %>

@@ -138,6 +138,38 @@ exports.search = async(req, res) => {
     }
 };
 
+exports.liveSearch = async(req, res) => {
+    try {
+        const currentUserId = getCurrentUserId(req);
+        const q = (req.query.q || "").trim();
+
+        if (!q || q.length < 1) {
+            return res.json({ results: [] });
+        }
+
+        let posts = await Post.search(q, 8, 0, currentUserId);
+        posts = await Tag.attachToPosts(posts);
+
+        const results = posts.map(p => ({
+            id: p.id,
+            title: p.title,
+            author: p.author || "Unknown",
+            photo: p.photo || null,
+            excerpt: p.content
+                ? p.content.replace(/<[^>]+>/g, "").slice(0, 90) + (p.content.length > 90 ? "…" : "")
+                : "",
+            tags: (p.tags || []).slice(0, 3).map(t => t.name),
+            url: `/posts/${p.id}`
+        }));
+
+        return res.json({ results, total: results.length, query: q });
+    } catch (error) {
+        console.error("Live search error:", error);
+        return res.status(500).json({ results: [], error: "Server Error" });
+    }
+};
+
+
 exports.getPostsByTag = async(req, res) => {
     try {
         const slug = req.params.slug;
@@ -454,9 +486,14 @@ exports.createComment = async(req, res) => {
         const comment = await Social.createComment(req.params.id, req.user.id, content.trim());
         const counts = await Social.countsForPost(req.params.id, req.user.id);
 
+        const commentWithFlag = {
+            ...comment,
+            is_author: String(comment.user_id) === String(post.user_id)
+        };
+
         return res.status(201).json({
             status: "Success!",
-            comment,
+            comment: commentWithFlag,
             counts
         });
     } catch (error) {
@@ -516,6 +553,26 @@ exports.replyToComment = async(req, res) => {
         });
     } catch (error) {
         console.error("Reply error:", error);
+        return res.status(500).json({ status: "Fail!", message: "Internal Server Error!" });
+    }
+};
+
+exports.deleteComment = async(req, res) => {
+    try {
+        const { commentId } = req.params;
+        const requesterId = req.user.id;
+
+        const result = await Social.deleteComment(commentId, requesterId);
+
+        if (!result.deleted) {
+            const status = result.reason === 'not_found' ? 404 : 403;
+            return res.status(status).json({ status: "Fail!", message: result.reason === 'not_found' ? "Comment not found." : "You are not allowed to delete this comment." });
+        }
+
+        const counts = await Social.countsForPost(result.postId, requesterId);
+        return res.status(200).json({ status: "Success!", counts });
+    } catch (error) {
+        console.error("Delete comment error:", error);
         return res.status(500).json({ status: "Fail!", message: "Internal Server Error!" });
     }
 };

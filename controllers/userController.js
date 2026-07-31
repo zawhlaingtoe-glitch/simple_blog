@@ -186,6 +186,26 @@ exports.profile = async(req, res) => {
     }
 };
 
+exports.showEditProfile = async(req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        return res.render("users/edit-profile", {
+            title: "Edit Profile",
+            user,
+            error: null,
+            success: req.query.success || null
+        });
+    } catch (error) {
+        console.error("Edit profile load error:", error);
+        return res.render("users/edit-profile", {
+            title: "Edit Profile",
+            user: null,
+            error: "Unable to load profile.",
+            success: null
+        });
+    }
+};
+
 exports.publicProfile = async(req, res) => {
     try {
         const profileUserId = req.params.id;

@@ -61,6 +61,40 @@ const heroPost = latestPosts[0];
 
     <section class="py-4">
         <div class="container">
+            <div class="hero-panel p-4 animate-fade-in-up mb-4">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-5">
+                        <span class="section-label d-inline-block mb-1">Search the blog</span>
+                        <h4 class="fw-bold mb-0">Find what you need.</h4>
+                    </div>
+                    <div class="col-md-7">
+                        <form action="/posts/search" method="GET" role="search">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search text-muted"></i></span>
+                                <input class="form-control" type="search" name="q" placeholder="Search by title or content..." aria-label="Search posts" style="font-size:0.9rem;">
+                                <button class="btn btn-brand" type="submit">Search</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <% if (typeof popularTags !== 'undefined' && popularTags && popularTags.length > 0) { %>
+                <div class="hero-panel p-3 animate-fade-in-up mb-4">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="icon-box"><i class="bi bi-tags"></i></span>
+                        <span class="section-label">Popular topics</span>
+                    </div>
+                    <div class="d-flex flex-wrap gap-1">
+                        <% popularTags.forEach(function(tag) { %>
+                            <a href="/posts/tag/<%= tag.slug %>" class="tag-pill" style="font-size:0.78rem;">
+                                #<%= tag.name %> <span class="text-muted" style="font-weight:400;font-size:0.7rem;">(<%= tag.post_count %>)</span>
+                            </a>
+                        <% }) %>
+                    </div>
+                </div>
+            <% } %>
+
             <div class="row align-items-end mb-4 g-3">
                 <div class="col-lg-7 animate-fade-in-up">
                     <span class="section-label">Why read here</span>
@@ -119,6 +153,7 @@ const heroPost = latestPosts[0];
                         <% latestPosts.forEach((post, index) => {
                             const delayClass = index === 0 ? '' : index === 1 ? 'delay-100' : 'delay-200';
                             const postExcerpt = post.content ? post.content.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '';
+                            const postTags = post.tags || [];
                         %>
                             <div class="col-lg-4 animate-fade-in-up <%= delayClass %>">
                                 <a href="/posts/<%= post.id %>" class="text-decoration-none text-reset d-block h-100">
@@ -139,6 +174,13 @@ const heroPost = latestPosts[0];
                                                 <% } %>
                                                 <%= post.author || 'Unknown author' %>
                                             </span>
+                                            <% if (postTags.length > 0) { %>
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    <% postTags.slice(0, 3).forEach(function(tag) { %>
+                                                        <span class="tag-pill">#<%= tag.name %></span>
+                                                    <% }) %>
+                                                </div>
+                                            <% } %>
                                             <h4 class="fw-bold smart-post-title"><%= post.title %></h4>
                                             <p class="smart-post-excerpt">
                                                 <%= postExcerpt || 'Open the detail page to read this post.' %>
@@ -148,8 +190,11 @@ const heroPost = latestPosts[0];
                                                     <i class="bi bi-calendar3 me-1"></i>
                                                     <%= post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Just now' %>
                                                 </span>
-                                                <span class="smart-post-read">
-                                                    Read <i class="bi bi-arrow-right ms-1"></i>
+                                                <span style="display:inline-flex;align-items:center;gap:0.5rem;">
+                                                    <span class="article-meta"><i class="bi bi-clock-history me-1"></i><%= locals.readingTime ? locals.readingTime(post.content) : '1 min read' %></span>
+                                                    <span class="smart-post-read">
+                                                        Read <i class="bi bi-arrow-right ms-1"></i>
+                                                    </span>
                                                 </span>
                                             </div>
                                         </div>
@@ -187,7 +232,7 @@ const heroPost = latestPosts[0];
 
 <footer class="footer py-4 mt-5">
     <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
-        <div class="fw-bold text-white">TECH<span class="text-primary">BLOG</span></div>
+        <div class="fw-bold text-white">TECH<span style="color: var(--accent);">BLOG</span></div>
         <div class="small">&copy; 2026 TechBlog. Built for curious developers.</div>
     </div>
 </footer>

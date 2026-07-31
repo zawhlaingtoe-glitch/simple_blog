@@ -213,6 +213,33 @@ class Social {
         return rows[0];
     }
 
+    static async deleteComment(commentId, requesterId) {
+        await Social.ensureTables();
+
+        // fetch comment with post owner info
+        const [rows] = await db.query(
+            `SELECT pc.*, p.user_id AS post_owner_id
+             FROM post_comments pc
+             JOIN POSTS p ON pc.post_id = p.id
+             WHERE pc.id = ?`,
+            [commentId]
+        );
+
+        if (rows.length === 0) return { deleted: false, reason: 'not_found' };
+
+        const comment = rows[0];
+        const isOwner   = String(comment.user_id)       === String(requesterId);
+        const isPostOwner = String(comment.post_owner_id) === String(requesterId);
+
+        if (!isOwner && !isPostOwner) return { deleted: false, reason: 'forbidden' };
+
+        // delete replies first, then the comment
+        await db.query('DELETE FROM post_comments WHERE parent_id = ?', [commentId]);
+        await db.query('DELETE FROM post_comments WHERE id = ?', [commentId]);
+
+        return { deleted: true, postId: comment.post_id };
+    }
+
     static async toggleShare(postId, userId) {
         await Social.ensureTables();
 

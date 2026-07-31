@@ -8,63 +8,314 @@ const viewerName = currentUser && currentUser.username ? currentUser.username : 
 const viewerInitial = viewerName.charAt(0).toUpperCase();
 const viewerPhoto = currentUser && currentUser.profile_photo ? currentUser.profile_photo : null;
 const plainContent = post.content ? post.content.replace(/<[^>]*>/g, '') : '';
+const postTags = post.tags || [];
 %>
 
-<main class="detail-page py-4 py-md-5">
-    <section class="container">
-        <div class="detail-layout">
+<style>
+/* ── Premium Comment Redesign ── */
+.hn-comments-section {
+    padding: 1.5rem 0 0;
+    display: none;
+}
+.hn-comments-section.is-open {
+    display: block;
+}
+.comments-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--line);
+}
+.comments-header-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.comments-count-pill {
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    min-width: 20px;
+    text-align: center;
+}
+.hn-comment-thread {
+    margin-bottom: 0.75rem;
+    animation: commentSlideIn 0.3s cubic-bezier(0.34,1.4,0.64,1) both;
+}
+@keyframes commentSlideIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.hn-comment {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+    background: var(--soft, #f8fafc);
+    border-radius: 14px;
+    border: 1px solid transparent;
+    margin-bottom: 0.35rem;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    position: relative;
+}
+.hn-comment:hover {
+    border-color: rgba(6,182,212,0.12);
+    box-shadow: 0 2px 12px rgba(6,182,212,0.07);
+}
+.hn-comment .hn-author-fallback,
+.hn-comment .hn-author-avatar {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    font-size: 0.78rem;
+    border-radius: 50%;
+}
+.hn-comment-body {
+    flex: 1;
+    min-width: 0;
+}
+.hn-comment-author-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.3rem;
+}
+.hn-comment-author {
+    font-weight: 700;
+    font-size: 0.84rem;
+    color: var(--ink);
+}
+.hn-comment-time {
+    font-size: 0.74rem;
+    color: var(--muted, #94a3b8);
+    margin-left: auto;
+}
+.hn-comment-text {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--ink);
+    white-space: pre-line;
+    margin: 0 0 0.4rem;
+    word-break: break-word;
+}
+.hn-comment-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.2rem;
+}
+.hn-reply-btn, .hn-delete-btn {
+    font-size: 0.77rem;
+    font-weight: 600;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0.15rem 0.4rem;
+    border-radius: 5px;
+    transition: background 0.15s, color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.hn-reply-btn {
+    color: var(--muted, #94a3b8);
+}
+.hn-reply-btn:hover {
+    color: var(--brand, #06b6d4);
+    background: rgba(6,182,212,0.08);
+}
+.hn-delete-btn {
+    color: #94a3b8;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+.hn-comment:hover .hn-delete-btn {
+    opacity: 1;
+}
+.hn-delete-btn:hover {
+    color: #ef4444;
+    background: rgba(239,68,68,0.08);
+}
+.hn-delete-btn.deleting {
+    color: #ef4444;
+    opacity: 1;
+    animation: deleteSpin 0.5s linear infinite;
+}
+@keyframes deleteSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+.hn-reply-thread {
+    padding-left: 2.6rem;
+    margin-top: 0.3rem;
+}
+.hn-reply-thread .hn-comment {
+    background: transparent;
+    border-left: 2px solid rgba(6,182,212,0.2);
+    border-radius: 0 10px 10px 0;
+    padding-left: 0.8rem;
+}
+.hn-reply-thread .hn-comment:hover {
+    border-left-color: rgba(6,182,212,0.5);
+    background: rgba(6,182,212,0.03);
+}
+
+/* Comment input redesign */
+.hn-comment-input-wrap {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--line);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.hn-comment-input-wrap:focus-within {
+    border-color: #06b6d4;
+    box-shadow: 0 0 0 2px rgba(6,182,212,0.1), 0 1px 4px rgba(0,0,0,0.04);
+}
+.hn-comment-input-wrap .hn-author-avatar,
+.hn-comment-input-wrap .hn-author-fallback {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    border-radius: 50%;
+}
+.hn-comment-box {
+    flex: 1;
+}
+.hn-comment-box textarea {
+    width: 100%;
+    border: none;
+    border-radius: 6px;
+    padding: 0.25rem 0;
+    font-size: 0.82rem;
+    font-family: inherit;
+    resize: none;
+    min-height: 28px;
+    background: transparent;
+    color: var(--ink);
+    outline: none;
+    transition: min-height 0.2s ease;
+}
+.hn-comment-box textarea:focus {
+    min-height: 56px;
+}
+.hn-comment-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+}
+
+/* Reply box */
+.reply-box {
+    margin-top: 0.5rem;
+    background: var(--soft);
+    border-radius: 10px;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--line);
+}
+.reply-box textarea {
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 0.85rem;
+    font-family: inherit;
+    resize: none;
+    min-height: 32px;
+    outline: none;
+    color: var(--ink);
+}
+
+/* Empty comments state */
+.comments-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--muted);
+}
+.comments-empty i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.4;
+    display: block;
+}
+.comments-empty p {
+    font-size: 0.88rem;
+}
+
+/* Share popover link fix */
+.share-popover .share-option {
+    cursor: pointer;
+    user-select: none;
+}
+</style>
+
+<main class="detail-page post-show-page pb-4 pb-md-5">
+    <section class="container-fluid">
+        <div class="medium-detail-layout">
             <aside class="detail-sidebar d-none d-lg-block animate-fade-in-up">
-                <div class="feed-panel p-3">
-                    <a href="/" class="feed-nav-item">
-                        <span class="icon-box"><i class="bi bi-house"></i></span>
-                        Home
-                    </a>
-                    <a href="/posts" class="feed-nav-item">
-                        <span class="icon-box"><i class="bi bi-file-text"></i></span>
-                        All Posts
-                    </a>
+                <div class="hn-sidebar-card m-0">
+                    <a href="/" class="hn-nav-item"><i class="bi bi-house"></i> Home</a>
+                    <a href="/posts" class="hn-nav-item"><i class="bi bi-file-text"></i> All Posts</a>
                     <% if (locals.isLoggedIn) { %>
-                        <a href="/users/profile" class="feed-nav-item">
-                            <span class="icon-box"><i class="bi bi-person-circle"></i></span>
-                            Profile
-                        </a>
+                        <a href="/users/profile" class="hn-nav-item"><i class="bi bi-person-circle"></i> Profile</a>
                     <% } %>
                 </div>
             </aside>
 
-            <div class="animate-fade-in-up delay-100">
-                <nav aria-label="breadcrumb" class="mb-3">
-                    <ol class="breadcrumb small">
-                        <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
-                        <li class="breadcrumb-item"><a href="/posts" class="text-decoration-none">Posts</a></li>
-                        <li class="breadcrumb-item active" aria-current="page"><%= post.title %></li>
-                    </ol>
-                </nav>
+            <div class="medium-article-shell animate-fade-in-up delay-100">
+                <div class="hn-breadcrumb medium-breadcrumb">
+                    <a href="/">Home</a>
+                    <span class="sep">/</span>
+                    <a href="/posts">Posts</a>
+                    <span class="sep">/</span>
+                    <span class="current"><%= post.title %></span>
+                </div>
 
-                <article class="detail-card" id="post-<%= post.id %>" data-post-id="<%= post.id %>">
-                    <div class="detail-header">
-                        <a href="/users/<%= post.user_id %>" class="d-flex align-items-center gap-2 text-decoration-none text-reset detail-author">
-                            <% if (post.author_photo) { %>
-                                <img src="/upload/<%= post.author_photo %>" alt="<%= authorName %>" class="detail-author-photo">
-                            <% } else { %>
-                                <span class="detail-author-fallback"><%= authorInitial %></span>
-                            <% } %>
-                            <div>
-                                <h6 class="fw-bold mb-0"><%= authorName %></h6>
-                                <span class="article-meta">
-                                    <i class="bi bi-clock me-1"></i>
-                                    <%= post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Just now' %>
-                                </span>
-                            </div>
-                        </a>
-
-                        <div class="d-flex align-items-center gap-2">
+                <article class="hn-article-card medium-article" id="post-<%= post.id %>" data-post-id="<%= post.id %>" data-post-owner="<%= post.user_id %>" data-current-user="<%= currentUserId || '' %>">
+                    <div class="hn-article-header">
+                        <div class="medium-kicker">
+                            <a href="/posts">Posts</a>
                             <% if (post.visibility === 'private') { %>
-                                <span class="badge bg-warning text-dark"><i class="bi bi-lock-fill me-1"></i>Private</span>
+                                <span class="hn-badge"><i class="bi bi-lock-fill"></i>Private</span>
                             <% } %>
+                        </div>
+
+                        <h1 class="hn-article-title"><%= post.title %></h1>
+
+                        <div class="medium-author-row">
+                            <a href="/users/<%= post.user_id %>" class="medium-author-avatar-link">
+                                <% if (post.author_photo) { %>
+                                    <img src="/upload/<%= post.author_photo %>" alt="<%= authorName %>" class="hn-author-avatar medium-author-avatar">
+                                <% } else { %>
+                                    <span class="hn-author-fallback medium-author-avatar"><%= authorInitial %></span>
+                                <% } %>
+                            </a>
+                            <div class="medium-author-copy">
+                                <a href="/users/<%= post.user_id %>" class="hn-author-name"><%= authorName %></a>
+                                <div class="hn-author-meta">
+                                    <%= post.created_at ? new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Just now' %>
+                                    <span class="dot-sep">·</span>
+                                    <%= locals.readingTime ? locals.readingTime(post.content) : '1 min read' %>
+                                </div>
+                            </div>
                             <% if (isOwner) { %>
-                                <div class="dropdown">
-                                    <button class="btn btn-outline-brand btn-sm px-2 py-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Post options">
+                                <div class="dropdown ms-auto">
+                                    <button class="hn-action-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Post options">
                                         <i class="bi bi-three-dots"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end">
@@ -78,103 +329,192 @@ const plainContent = post.content ? post.content.replace(/<[^>]*>/g, '') : '';
                                 </div>
                             <% } %>
                         </div>
-                    </div>
 
-                    <h1 class="detail-title fw-bold"><%= post.title %></h1>
-
-                    <% if (post.photo) { %>
-                        <div class="detail-image-wrapper">
-                            <img src="/upload/<%= post.photo %>" alt="<%= post.title %>" class="detail-image">
-                        </div>
-                    <% } %>
-
-                    <div class="detail-content">
-                        <%- post.content %>
-                    </div>
-
-                    <div class="detail-stats">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div class="d-flex align-items-center gap-2">
+                        <div class="medium-action-bar">
+                            <div class="hn-article-stats">
                                 <span class="reaction-stack" aria-hidden="true">
                                     <span class="reaction-badge"><i class="bi bi-hand-thumbs-up-fill"></i></span>
                                     <span class="reaction-badge" style="background:#ef4444;"><i class="bi bi-heart-fill"></i></span>
                                 </span>
-                                <span>
-                                    <span data-reaction-count><%= post.reaction_count || 0 %> <%= Number(post.reaction_count) === 1 ? 'reaction' : 'reactions' %></span>
+                                <span data-reaction-count><%= post.reaction_count || 0 %> reaction<%= Number(post.reaction_count) === 1 ? '' : 's' %></span>
+                                <span data-reaction-users>
                                     <% if (post.reaction_users && post.reaction_users.length > 0) { %>
-                                        <span class="d-block small" data-reaction-users>
-                                            Liked by <%= post.reaction_users.map(user => user.author).join(', ') %>
-                                        </span>
-                                    <% } else { %>
-                                        <span class="d-block small" data-reaction-users></span>
+                                        <span class="small ms-1">· Liked by <%= post.reaction_users.map(u => u.author).join(', ') %></span>
                                     <% } %>
                                 </span>
                             </div>
-                            <div>
-                                <span data-comment-count><%= post.comment_count || 0 %> <%= Number(post.comment_count) === 1 ? 'comment' : 'comments' %></span>
-                                <span class="mx-1">/</span>
-                                <span data-share-count><%= post.share_count || 0 %> <%= Number(post.share_count) === 1 ? 'share' : 'shares' %></span>
+                            <div class="hn-article-actions">
+                                <button type="button" class="hn-action-btn <%= post.current_user_reacted ? 'is-active' : '' %>" data-reaction-button data-reacted="<%= post.current_user_reacted ? 'true' : 'false' %>">
+                                    <i class="bi <%= post.current_user_reacted ? 'bi-hand-thumbs-up-fill' : 'bi-hand-thumbs-up' %>"></i>
+                                    <span><%= post.current_user_reacted ? 'Reacted' : 'React' %></span>
+                                </button>
+                                <button type="button" class="hn-action-btn" data-comment-toggle>
+                                    <i class="bi bi-chat-left"></i>
+                                    <span>Comment</span>
+                                </button>
+                                <button type="button" class="hn-action-btn <%= post.current_user_shared ? 'is-active' : '' %>" data-share-button data-shared="<%= post.current_user_shared ? 'true' : 'false' %>">
+                                    <i class="bi bi-share"></i>
+                                    <span><%= post.current_user_shared ? 'Shared' : 'Share' %></span>
+                                </button>
+                                <div style="position:relative;">
+                                    <button type="button" class="hn-action-btn" data-external-share-toggle aria-label="Share externally">
+                                        <i class="bi bi-box-arrow-up"></i>
+                                    </button>
+                                    <%
+                                        const shareUrl = (locals.serverHost || 'http://localhost:3500') + '/posts/' + post.id;
+                                        const encodedUrl = encodeURIComponent(shareUrl);
+                                        const encodedTitle = encodeURIComponent(post.title);
+                                    %>
+                                    <div class="share-popover" data-external-share-popover>
+                                        <div class="share-header">Share to</div>
+                                        <a class="share-option share-option-facebook"
+                                           data-share-href="https://www.facebook.com/sharer/sharer.php?u=<%= encodedUrl %>"
+                                           tabindex="0" role="button">
+                                            <i class="bi bi-facebook"></i> Facebook
+                                        </a>
+                                        <a class="share-option share-option-linkedin"
+                                           data-share-href="https://www.linkedin.com/sharing/share-offsite/?url=<%= encodedUrl %>"
+                                           tabindex="0" role="button">
+                                            <i class="bi bi-linkedin"></i> LinkedIn
+                                        </a>
+                                        <a class="share-option share-option-twitter"
+                                           data-share-href="https://twitter.com/intent/tweet?text=<%= encodedTitle %>&url=<%= encodedUrl %>"
+                                           tabindex="0" role="button">
+                                            <i class="bi bi-twitter-x"></i> X
+                                        </a>
+                                        <a class="share-option share-option-email"
+                                           data-share-href="mailto:?subject=<%= encodedTitle %>&body=Check%20out%20this%20post:%20<%= encodedUrl %>"
+                                           tabindex="0" role="button">
+                                            <i class="bi bi-envelope"></i> Email
+                                        </a>
+                                        <div class="share-divider"></div>
+                                        <div class="share-option share-option-copy" data-copy-link="<%= shareUrl %>">
+                                            <i class="bi bi-link-45deg"></i> Copy Link
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="detail-actions">
-                        <div class="d-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
-                            <button type="button" class="feed-action <%= post.current_user_reacted ? 'is-active' : '' %>" data-reaction-button data-reacted="<%= post.current_user_reacted ? 'true' : 'false' %>">
-                                <i class="bi <%= post.current_user_reacted ? 'bi-hand-thumbs-up-fill' : 'bi-hand-thumbs-up' %> me-1"></i><span><%= post.current_user_reacted ? 'Reacted' : 'React' %></span>
-                            </button>
-                            <button type="button" class="feed-action" data-comment-toggle>
-                                <i class="bi bi-chat-left me-1"></i><span>Comment</span>
-                            </button>
-                            <button type="button" class="feed-action <%= post.current_user_shared ? 'is-active' : '' %>" data-share-button data-shared="<%= post.current_user_shared ? 'true' : 'false' %>">
-                                <i class="bi bi-share me-1"></i><span><%= post.current_user_shared ? 'Shared' : 'Share' %></span>
-                            </button>
+                    <% if (post.photo) { %>
+                        <img src="/upload/<%= post.photo %>" alt="<%= post.title %>" class="hn-article-cover">
+                    <% } else { %>
+                        <div class="hn-article-cover-empty">
+                            <i class="bi bi-image"></i>
                         </div>
+                    <% } %>
+
+                    <div class="hn-article-body">
+                        <%- post.content %>
                     </div>
 
-                    <div class="comment-drawer" data-comment-drawer>
+                    <div class="hn-article-footer">
+                        <% if (postTags.length > 0) { %>
+                            <div class="hn-article-tags">
+                                <% postTags.forEach(function(tag) { %>
+                                    <a href="/posts/tag/<%= tag.slug %>" class="hn-tag"><%= tag.name %></a>
+                                <% }) %>
+                            </div>
+                        <% } %>
+                    </div>
+
+                    <div class="hn-comments-section" data-comment-drawer>
+                        <div class="comments-header">
+                            <div class="comments-header-title">
+                                <i class="bi bi-chat-left-text"></i>
+                                Responses
+                                <span class="comments-count-pill" data-comment-count-pill><%= post.comments ? post.comments.length : 0 %></span>
+                            </div>
+                        </div>
+
+                        <div class="hn-comment-input-wrap">
+                            <% if (viewerPhoto) { %>
+                                <img src="/upload/<%= viewerPhoto %>" alt="<%= viewerName %>" class="hn-author-avatar">
+                            <% } else { %>
+                                <span class="hn-author-fallback"><%= viewerInitial %></span>
+                            <% } %>
+                            <div class="hn-comment-box">
+                                <textarea rows="1" placeholder="Write a response..." data-comment-input></textarea>
+                                <div class="hn-comment-footer">
+                                    <span class="share-status" data-share-status style="font-size:0.8rem;color:var(--muted);"></span>
+                                    <button type="button" class="btn btn-brand btn-sm hn-comment-submit" data-comment-submit>
+                                        <i class="bi bi-send me-1"></i>Post
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div data-comment-list>
                             <% if (post.comments && post.comments.length > 0) { %>
                                 <% post.comments.forEach(comment => {
                                     const commentAuthor = comment.author || 'User';
                                     const commentInitial = commentAuthor.charAt(0).toUpperCase();
                                     const replies = comment.replies || [];
+                                    const isCommentByAuthor = String(comment.user_id) === String(post.user_id);
+                                    const canDelete = currentUserId && (String(comment.user_id) === String(currentUserId) || String(post.user_id) === String(currentUserId));
+                                    const commentDate = comment.created_at ? new Date(comment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
                                 %>
-                                    <div class="comment-thread">
-                                        <div class="comment-preview has-comment" data-comment-id="<%= comment.id %>">
-                                            <div class="d-flex align-items-start gap-2">
-                                                <% if (comment.author_photo) { %>
-                                                    <img src="/upload/<%= comment.author_photo %>" alt="<%= commentAuthor %>" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">
-                                                <% } else { %>
-                                                    <span class="feed-author-fallback" style="width:30px;height:30px;flex-basis:30px;font-size:0.78rem;"><%= commentInitial %></span>
-                                                <% } %>
-                                                <div class="flex-grow-1">
-                                                    <div class="fw-bold small"><%= commentAuthor %></div>
-                                                    <div class="comment-text"><%= comment.content %></div>
-                                                    <button type="button" class="reply-toggle-btn small text-primary border-0 bg-transparent p-0 mt-1 fw-semibold" data-reply-toggle="<%= comment.id %>">Reply</button>
-                                                    <div class="reply-box mt-2" data-reply-box="<%= comment.id %>" style="display:none;">
-                                                        <textarea class="form-control comment-input" rows="1" placeholder="Write a reply..." data-reply-input="<%= comment.id %>"></textarea>
-                                                        <button type="button" class="btn btn-brand btn-sm mt-1" data-reply-submit="<%= comment.id %>"><i class="bi bi-send me-1"></i>Reply</button>
+                                    <div class="hn-comment-thread" data-thread-id="<%= comment.id %>">
+                                        <div class="hn-comment" data-comment-id="<%= comment.id %>">
+                                            <% if (comment.author_photo) { %>
+                                                <img src="/upload/<%= comment.author_photo %>" alt="<%= commentAuthor %>" class="hn-author-avatar" style="width:34px;height:34px;flex:0 0 34px;">
+                                            <% } else { %>
+                                                <span class="hn-author-fallback" style="width:34px;height:34px;flex:0 0 34px;font-size:0.78rem;"><%= commentInitial %></span>
+                                            <% } %>
+                                            <div class="hn-comment-body">
+                                                <div class="hn-comment-author-row">
+                                                    <span class="hn-comment-author"><%= commentAuthor %></span>
+                                                    <% if (isCommentByAuthor) { %>
+                                                        <span class="hn-author-badge"><i class="bi bi-patch-check-fill" style="font-size:0.65rem;"></i> By author</span>
+                                                    <% } %>
+                                                    <% if (commentDate) { %><span class="hn-comment-time"><%= commentDate %></span><% } %>
+                                                </div>
+                                                <div class="hn-comment-text"><%= comment.content %></div>
+                                                <div class="hn-comment-actions">
+                                                    <button type="button" class="hn-reply-btn" data-reply-toggle="<%= comment.id %>">
+                                                        <i class="bi bi-reply"></i> Reply
+                                                    </button>
+                                                    <% if (canDelete) { %>
+                                                        <button type="button" class="hn-delete-btn" data-delete-comment="<%= comment.id %>" title="Delete comment">
+                                                            <i class="bi bi-trash3"></i>
+                                                        </button>
+                                                    <% } %>
+                                                </div>
+                                                <div class="reply-box" data-reply-box="<%= comment.id %>" style="display:none;">
+                                                    <textarea rows="1" placeholder="Write a reply..." data-reply-input="<%= comment.id %>"></textarea>
+                                                    <div style="display:flex;justify-content:flex-end;margin-top:0.4rem;">
+                                                        <button type="button" class="btn btn-brand btn-sm" data-reply-submit="<%= comment.id %>"><i class="bi bi-send me-1"></i>Reply</button>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                         <% if (replies.length > 0) { %>
-                                            <div class="reply-thread">
+                                            <div class="hn-reply-thread">
                                                 <% replies.forEach(reply => {
                                                     const replyAuthor = reply.author || 'User';
                                                     const replyInitial = replyAuthor.charAt(0).toUpperCase();
+                                                    const canDeleteReply = currentUserId && (String(reply.user_id) === String(currentUserId) || String(post.user_id) === String(currentUserId));
+                                                    const replyDate = reply.created_at ? new Date(reply.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
                                                 %>
-                                                    <div class="comment-preview has-comment reply-item">
-                                                        <div class="d-flex align-items-start gap-2">
-                                                            <% if (reply.author_photo) { %>
-                                                                <img src="/upload/<%= reply.author_photo %>" alt="<%= replyAuthor %>" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">
-                                                            <% } else { %>
-                                                                <span class="feed-author-fallback" style="width:26px;height:26px;flex-basis:26px;font-size:0.7rem;"><%= replyInitial %></span>
-                                                            <% } %>
-                                                            <div>
-                                                                <div class="fw-bold small"><%= replyAuthor %></div>
-                                                                <div class="comment-text"><%= reply.content %></div>
+                                                    <div class="hn-comment" data-comment-id="<%= reply.id %>">
+                                                        <% if (reply.author_photo) { %>
+                                                            <img src="/upload/<%= reply.author_photo %>" alt="<%= replyAuthor %>" class="hn-author-avatar" style="width:28px;height:28px;flex:0 0 28px;">
+                                                        <% } else { %>
+                                                            <span class="hn-author-fallback" style="width:28px;height:28px;flex:0 0 28px;font-size:0.7rem;"><%= replyInitial %></span>
+                                                        <% } %>
+                                                        <div class="hn-comment-body">
+                                                            <div class="hn-comment-author-row">
+                                                                <span class="hn-comment-author"><%= replyAuthor %></span>
+                                                                <% if (replyDate) { %><span class="hn-comment-time"><%= replyDate %></span><% } %>
+                                                            </div>
+                                                            <div class="hn-comment-text"><%= reply.content %></div>
+                                                            <div class="hn-comment-actions">
+                                                                <% if (canDeleteReply) { %>
+                                                                    <button type="button" class="hn-delete-btn" data-delete-comment="<%= reply.id %>" title="Delete reply">
+                                                                        <i class="bi bi-trash3"></i>
+                                                                    </button>
+                                                                <% } %>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -183,222 +523,360 @@ const plainContent = post.content ? post.content.replace(/<[^>]*>/g, '') : '';
                                         <% } %>
                                     </div>
                                 <% }) %>
-                            <% } %>
-                        </div>
-                        <div class="d-flex align-items-start gap-2">
-                            <% if (viewerPhoto) { %>
-                                <img src="/upload/<%= viewerPhoto %>" alt="<%= viewerName %>" class="feed-author-photo" style="width:36px;height:36px;flex-basis:36px;">
                             <% } else { %>
-                                <span class="feed-author-fallback" style="width:36px;height:36px;flex-basis:36px;font-size:0.9rem;"><%= viewerInitial %></span>
-                            <% } %>
-                            <div class="flex-grow-1">
-                                <textarea class="form-control comment-input" rows="1" placeholder="Write a comment..." data-comment-input></textarea>
-                                <div class="d-flex justify-content-between align-items-center gap-2 mt-2">
-                                    <span class="share-status" data-share-status></span>
-                                    <button type="button" class="btn btn-brand btn-sm" data-comment-submit>
-                                        <i class="bi bi-send me-1"></i>Post
-                                    </button>
+                                <div class="comments-empty" data-empty-state>
+                                    <i class="bi bi-chat-square-text"></i>
+                                    <p>No responses yet — be the first to share your thoughts!</p>
                                 </div>
-                            </div>
+                            <% } %>
                         </div>
                     </div>
                 </article>
             </div>
-
-            <aside class="detail-sidebar-right d-none d-xl-block animate-fade-in-up delay-200">
-                <div class="feed-panel p-4">
-                    <span class="section-label">About the author</span>
-                    <div class="mt-3">
-                        <div class="d-flex align-items-center gap-2 mb-2">
-                            <% if (post.author_photo) { %>
-                                <img src="/upload/<%= post.author_photo %>" alt="<%= authorName %>" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
-                            <% } else { %>
-                                <span class="feed-author-fallback" style="width:40px;height:40px;flex-basis:40px;"><%= authorInitial %></span>
-                            <% } %>
-                            <div>
-                                <div class="fw-bold"><%= authorName %></div>
-                                <a href="/users/<%= post.user_id %>" class="small text-decoration-none">View profile</a>
-                            </div>
-                        </div>
-                        <div class="mb-3 small text-muted">
-                            <i class="bi bi-calendar3 me-1"></i> Posted <%= post.created_at ? new Date(post.created_at).toLocaleDateString() : 'recently' %>
-                        </div>
-                    </div>
-                </div>
-            </aside>
         </div>
     </section>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-        (function() {
-            const card = document.querySelector('.detail-card');
-            if (!card) return;
+    (function() {
+        const card = document.querySelector('.hn-article-card');
+        if (!card) return;
 
-            const postId = card.dataset.postId;
-            const reactionButton = card.querySelector('[data-reaction-button]');
-            const reactionCount = card.querySelector('[data-reaction-count]');
-            const reactionUsers = card.querySelector('[data-reaction-users]');
-            const commentToggle = card.querySelector('[data-comment-toggle]');
-            const commentDrawer = card.querySelector('[data-comment-drawer]');
-            const commentInput = card.querySelector('[data-comment-input]');
-            const commentSubmit = card.querySelector('[data-comment-submit]');
-            const commentList = card.querySelector('[data-comment-list]');
-            const commentCount = card.querySelector('[data-comment-count]');
-            const shareButton = card.querySelector('[data-share-button]');
-            const shareCount = card.querySelector('[data-share-count]');
-            const shareStatus = card.querySelector('[data-share-status]');
+        const postId       = card.dataset.postId;
+        const postOwner    = card.dataset.postOwner;
+        const currentUser  = card.dataset.currentUser;
 
-            const pluralize = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
-            const goLogin = () => { window.location.href = '/users/login'; };
-            const postJson = async (url, body = {}) => {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                if (response.redirected || response.status === 401 || response.status === 403) {
-                    goLogin();
-                    return null;
-                }
-                return response.json();
-            };
+        const reactionButton = card.querySelector('[data-reaction-button]');
+        const reactionCount  = card.querySelector('[data-reaction-count]');
+        const reactionUsers  = card.querySelector('[data-reaction-users]');
+        const commentToggle  = card.querySelector('[data-comment-toggle]');
+        const commentDrawer  = card.querySelector('[data-comment-drawer]');
+        const commentInput   = card.querySelector('[data-comment-input]');
+        const commentSubmit  = card.querySelector('[data-comment-submit]');
+        const commentList    = card.querySelector('[data-comment-list]');
+        const shareButton    = card.querySelector('[data-share-button]');
+        const shareStatus    = card.querySelector('[data-share-status]');
+        const countPill      = card.querySelector('[data-comment-count-pill]');
 
-            const updateCounts = (counts) => {
-                if (!counts) return;
-                reactionCount.textContent = pluralize(Number(counts.reactions || 0), 'reaction');
-                commentCount.textContent = pluralize(Number(counts.comments || 0), 'comment');
-                shareCount.textContent = pluralize(Number(counts.shares || 0), 'share');
-                if (reactionUsers && counts.reactionUsers) {
-                    reactionUsers.textContent = counts.reactionUsers.length > 0
-                        ? `Liked by ${counts.reactionUsers.map(u => u.author).join(', ')}`
-                        : '';
-                }
-                if (shareButton && counts.current_user_shared !== undefined) {
-                    const isShared = counts.current_user_shared;
-                    shareButton.classList.toggle('is-active', isShared);
-                    shareButton.dataset.shared = isShared ? 'true' : 'false';
-                    shareButton.querySelector('span').textContent = isShared ? 'Shared' : 'Share';
-                    shareButton.querySelector('i').className = 'bi bi-share me-1';
-                }
-            };
+        const goLogin = () => { window.location.href = '/users/login'; };
 
-            reactionButton?.addEventListener('click', async () => {
-                const data = await postJson(`/posts/${postId}/reactions`, { reaction_type: 'like' });
-                if (!data) return;
-                reactionButton.classList.toggle('is-active', data.reacted);
-                reactionButton.dataset.reacted = data.reacted ? 'true' : 'false';
-                reactionButton.querySelector('span').textContent = data.reacted ? 'Reacted' : 'React';
-                reactionButton.querySelector('i').className = data.reacted ? 'bi bi-hand-thumbs-up-fill me-1' : 'bi bi-hand-thumbs-up me-1';
-                updateCounts(data.counts);
+        const postJson = async (url, body = {}) => {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(body)
             });
+            if (response.redirected || response.status === 401 || response.status === 403) {
+                goLogin(); return null;
+            }
+            return response.json();
+        };
 
-            commentToggle?.addEventListener('click', () => {
-                commentDrawer.classList.toggle('is-open');
-                commentToggle.classList.toggle('is-active', commentDrawer.classList.contains('is-open'));
-                if (commentDrawer.classList.contains('is-open')) commentInput.focus();
+        const deleteJson = async (url) => {
+            const response = await fetch(url, {
+                method: 'DELETE',
+                headers: { 'Accept': 'application/json' }
             });
+            if (response.redirected || response.status === 401 || response.status === 403) {
+                goLogin(); return null;
+            }
+            return response.json();
+        };
 
-            commentSubmit?.addEventListener('click', async () => {
-                const comment = commentInput.value.trim();
-                if (!comment) { commentInput.focus(); return; }
-                const data = await postJson(`/posts/${postId}/comments`, { content: comment });
-                if (!data) return;
-                const commentAuthor = data.comment.author || 'User';
-                const commentInitial = commentAuthor.charAt(0).toUpperCase();
-                const item = document.createElement('div');
-                item.className = 'comment-thread';
-                item.innerHTML = `
-                    <div class="comment-preview has-comment" data-comment-id="${data.comment.id}">
-                        <div class="d-flex align-items-start gap-2">
-                            ${data.comment.author_photo
-                                ? `<img src="/upload/${data.comment.author_photo}" alt="${commentAuthor}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">`
-                                : `<span class="feed-author-fallback" style="width:30px;height:30px;flex-basis:30px;font-size:0.78rem;">${commentInitial}</span>`}
-                            <div class="flex-grow-1">
-                                <div class="fw-bold small">${commentAuthor}</div>
-                                <div class="comment-text">${data.comment.content}</div>
-                                <button type="button" class="reply-toggle-btn small text-primary border-0 bg-transparent p-0 mt-1 fw-semibold" data-reply-toggle="${data.comment.id}">Reply</button>
-                                <div class="reply-box mt-2" data-reply-box="${data.comment.id}" style="display:none;">
-                                    <textarea class="form-control comment-input" rows="1" placeholder="Write a reply..." data-reply-input="${data.comment.id}"></textarea>
-                                    <button type="button" class="btn btn-brand btn-sm mt-1" data-reply-submit="${data.comment.id}"><i class="bi bi-send me-1"></i>Reply</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>`;
-                const rt = item.querySelector('[data-reply-toggle]');
-                rt?.addEventListener('click', () => {
-                    const box = document.querySelector(`[data-reply-box="${rt.dataset.replyToggle}"]`);
-                    if (box) { box.style.display = box.style.display === 'none' ? 'block' : 'none'; if (box.style.display === 'block') box.querySelector('textarea').focus(); }
-                });
-                const rs = item.querySelector('[data-reply-submit]');
-                rs?.addEventListener('click', (e) => handleReplySubmit(e.currentTarget.dataset.replySubmit));
-                commentList.appendChild(item);
-                commentInput.value = '';
-                updateCounts(data.counts);
-            });
-
-            shareButton?.addEventListener('click', async () => {
-                const data = await postJson(`/posts/${postId}/shares`);
-                if (!data) return;
-                const isShared = data.shared;
+        const updateCounts = (counts) => {
+            if (!counts) return;
+            if (reactionCount && counts.reactions !== undefined)
+                reactionCount.textContent = counts.reactions + ' reaction' + (counts.reactions === 1 ? '' : 's');
+            if (reactionUsers && counts.reactionUsers) {
+                const existing = reactionUsers.querySelector('.small');
+                if (existing) existing.textContent = counts.reactionUsers.length > 0
+                    ? '· Liked by ' + counts.reactionUsers.map(u => u.author).join(', ') : '';
+            }
+            if (shareButton && counts.current_user_shared !== undefined) {
+                const isShared = counts.current_user_shared;
                 shareButton.classList.toggle('is-active', isShared);
                 shareButton.dataset.shared = isShared ? 'true' : 'false';
                 shareButton.querySelector('span').textContent = isShared ? 'Shared' : 'Share';
-                updateCounts(data.counts);
-                shareStatus.textContent = isShared ? 'Shared to profile. Tap again to unshare.' : 'Removed from profile.';
-                setTimeout(() => { shareStatus.textContent = ''; }, 1800);
+            }
+        };
+
+        const updateCommentCountPill = (delta) => {
+            if (!countPill) return;
+            const n = parseInt(countPill.textContent || '0') + delta;
+            countPill.textContent = Math.max(0, n);
+        };
+
+        // ── Format relative time ──
+        const timeAgo = (date) => {
+            const now = new Date();
+            const d   = new Date(date);
+            const s   = Math.floor((now - d) / 1000);
+            if (s < 60)  return 'just now';
+            if (s < 3600) return Math.floor(s/60) + 'm ago';
+            if (s < 86400) return Math.floor(s/3600) + 'h ago';
+            return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+        };
+
+        // ── Build comment HTML ──
+        const buildCommentHTML = (c, isReply = false) => {
+            const author  = c.author || 'User';
+            const initial = author.charAt(0).toUpperCase();
+            const avatarSize = isReply ? '28px' : '34px';
+            const fontSize   = isReply ? '0.7rem' : '0.78rem';
+            const avatarHtml = c.author_photo
+                ? `<img src="/upload/${c.author_photo}" alt="${author}" class="hn-author-avatar" style="width:${avatarSize};height:${avatarSize};flex:0 0 ${avatarSize};">`
+                : `<span class="hn-author-fallback" style="width:${avatarSize};height:${avatarSize};flex:0 0 ${avatarSize};font-size:${fontSize};">${initial}</span>`;
+            const authorBadge = c.is_author ? '<span class="hn-author-badge"><i class="bi bi-patch-check-fill" style="font-size:0.65rem;"></i> By author</span>' : '';
+            const timeStr = c.created_at ? `<span class="hn-comment-time">${timeAgo(c.created_at)}</span>` : '';
+            const canDel  = currentUser && (String(c.user_id) === String(currentUser) || String(postOwner) === String(currentUser));
+            const delBtn  = canDel ? `<button type="button" class="hn-delete-btn" data-delete-comment="${c.id}" title="Delete"><i class="bi bi-trash3"></i></button>` : '';
+            const replyBtn = !isReply ? `<button type="button" class="hn-reply-btn" data-reply-toggle="${c.id}"><i class="bi bi-reply"></i> Reply</button>` : '';
+            const replyBox = !isReply ? `
+                <div class="reply-box" data-reply-box="${c.id}" style="display:none;">
+                    <textarea rows="1" placeholder="Write a reply..." data-reply-input="${c.id}"></textarea>
+                    <div style="display:flex;justify-content:flex-end;margin-top:0.4rem;">
+                        <button type="button" class="btn btn-brand btn-sm" data-reply-submit="${c.id}"><i class="bi bi-send me-1"></i>Reply</button>
+                    </div>
+                </div>` : '';
+            return `
+                <div class="hn-comment" data-comment-id="${c.id}">
+                    ${avatarHtml}
+                    <div class="hn-comment-body">
+                        <div class="hn-comment-author-row">
+                            <span class="hn-comment-author">${author}</span>
+                            ${authorBadge}
+                            ${timeStr}
+                        </div>
+                        <div class="hn-comment-text">${c.content}</div>
+                        <div class="hn-comment-actions">
+                            ${replyBtn}
+                            ${delBtn}
+                        </div>
+                        ${replyBox}
+                    </div>
+                </div>`;
+        };
+
+        // ── Attach event handlers to a comment/reply container ──
+        const attachHandlers = (container) => {
+            container.querySelectorAll('[data-reply-toggle]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const box = container.querySelector(`[data-reply-box="${btn.dataset.replyToggle}"]`);
+                    if (box) {
+                        const isOpen = box.style.display !== 'none';
+                        box.style.display = isOpen ? 'none' : 'block';
+                        if (!isOpen) box.querySelector('textarea')?.focus();
+                    }
+                });
+            });
+            container.querySelectorAll('[data-reply-submit]').forEach(btn => {
+                btn.addEventListener('click', (e) => handleReplySubmit(e.currentTarget.dataset.replySubmit, container));
+            });
+            container.querySelectorAll('[data-delete-comment]').forEach(btn => {
+                btn.addEventListener('click', (e) => handleDeleteComment(e.currentTarget));
+            });
+        };
+
+        // ── Delete comment ──
+        const handleDeleteComment = async (btn) => {
+            const commentId = btn.dataset.deleteComment;
+            if (!commentId) return;
+
+            // Find the closest removable container
+            const commentEl = btn.closest('[data-comment-id]');
+            const threadEl  = commentEl?.closest('[data-thread-id]');
+
+            // Animate the icon
+            const icon = btn.querySelector('i');
+            btn.classList.add('deleting');
+            if (icon) icon.className = 'bi bi-arrow-repeat';
+
+            const data = await deleteJson(`/posts/${postId}/comments/${commentId}`);
+            btn.classList.remove('deleting');
+
+            if (!data || data.status !== 'Success!') {
+                if (icon) icon.className = 'bi bi-trash3';
+                return;
+            }
+
+            // Remove from DOM with fade
+            const removeTarget = threadEl || commentEl;
+            if (removeTarget) {
+                removeTarget.style.transition = 'opacity 0.3s ease, transform 0.3s ease, max-height 0.4s ease';
+                removeTarget.style.overflow   = 'hidden';
+                removeTarget.style.maxHeight  = removeTarget.offsetHeight + 'px';
+                requestAnimationFrame(() => {
+                    removeTarget.style.opacity   = '0';
+                    removeTarget.style.transform = 'scale(0.95)';
+                    removeTarget.style.maxHeight = '0';
+                    removeTarget.style.marginBottom = '0';
+                });
+                setTimeout(() => removeTarget.remove(), 400);
+            }
+
+            updateCommentCountPill(-1);
+            updateCounts(data.counts);
+
+            // Show empty state if no more comments
+            setTimeout(() => {
+                const remaining = commentList.querySelectorAll('[data-comment-id]');
+                if (remaining.length === 0 && !commentList.querySelector('[data-empty-state]')) {
+                    const empty = document.createElement('div');
+                    empty.className = 'comments-empty';
+                    empty.setAttribute('data-empty-state', '');
+                    empty.innerHTML = '<i class="bi bi-chat-square-text"></i><p>No responses yet — be the first to share your thoughts!</p>';
+                    commentList.appendChild(empty);
+                }
+            }, 450);
+        };
+
+        // ── Reactions ──
+        reactionButton?.addEventListener('click', async () => {
+            const data = await postJson(`/posts/${postId}/reactions`, { reaction_type: 'like' });
+            if (!data) return;
+            reactionButton.classList.toggle('is-active', data.reacted);
+            reactionButton.dataset.reacted = data.reacted ? 'true' : 'false';
+            reactionButton.querySelector('span').textContent = data.reacted ? 'Reacted' : 'React';
+            reactionButton.querySelector('i').className = data.reacted ? 'bi bi-hand-thumbs-up-fill' : 'bi bi-hand-thumbs-up';
+            updateCounts(data.counts);
+        });
+
+        // ── Comment toggle ──
+        commentToggle?.addEventListener('click', () => {
+            commentDrawer.classList.toggle('is-open');
+            commentToggle.classList.toggle('is-active', commentDrawer.classList.contains('is-open'));
+            if (commentDrawer.classList.contains('is-open')) commentInput?.focus();
+        });
+
+        // ── Submit comment ──
+        commentSubmit?.addEventListener('click', async () => {
+            const comment = commentInput.value.trim();
+            if (!comment) { commentInput.focus(); return; }
+            const data = await postJson(`/posts/${postId}/comments`, { content: comment });
+            if (!data) return;
+
+            // Remove empty state if present
+            const emptyState = commentList.querySelector('[data-empty-state]');
+            if (emptyState) emptyState.remove();
+
+            const thread = document.createElement('div');
+            thread.className = 'hn-comment-thread';
+            thread.setAttribute('data-thread-id', data.comment.id);
+            thread.innerHTML = buildCommentHTML(data.comment, false);
+            attachHandlers(thread);
+            commentList.appendChild(thread);
+            commentInput.value = '';
+            updateCommentCountPill(1);
+            updateCounts(data.counts);
+        });
+
+        // ── Share (internal) ──
+        shareButton?.addEventListener('click', async () => {
+            const data = await postJson(`/posts/${postId}/shares`);
+            if (!data) return;
+            const isShared = data.shared;
+            shareButton.classList.toggle('is-active', isShared);
+            shareButton.dataset.shared = isShared ? 'true' : 'false';
+            shareButton.querySelector('span').textContent = isShared ? 'Shared' : 'Share';
+            updateCounts(data.counts);
+            shareStatus.textContent = isShared ? 'Shared to profile. Tap again to unshare.' : 'Removed from profile.';
+            setTimeout(() => { shareStatus.textContent = ''; }, 2000);
+        });
+
+        // ── Reply submit ──
+        const handleReplySubmit = async (commentId, container) => {
+            const input = (container || card).querySelector(`[data-reply-input="${commentId}"]`);
+            if (!input) return;
+            const replyContent = input.value.trim();
+            if (!replyContent) { input.focus(); return; }
+            const data = await postJson(`/posts/${postId}/comments/${commentId}/reply`, { content: replyContent });
+            if (!data) return;
+
+            const parentComment = card.querySelector(`[data-comment-id="${commentId}"]`);
+            if (parentComment) {
+                const thread = parentComment.closest('[data-thread-id]');
+                let replyThread = thread ? thread.querySelector('.hn-reply-thread') : null;
+                if (!replyThread) {
+                    replyThread = document.createElement('div');
+                    replyThread.className = 'hn-reply-thread';
+                    (thread || parentComment).appendChild(replyThread);
+                }
+                const replyEl = document.createElement('div');
+                replyEl.innerHTML = buildCommentHTML(data.comment, true);
+                attachHandlers(replyEl);
+                replyThread.appendChild(replyEl.firstElementChild || replyEl);
+            }
+
+            input.value = '';
+            const box = card.querySelector(`[data-reply-box="${commentId}"]`);
+            if (box) box.style.display = 'none';
+            updateCounts(data.counts);
+        };
+
+        // ── Attach existing handlers ──
+        attachHandlers(card);
+
+        // ── External share popover ──
+        const extShareToggle  = card.querySelector('[data-external-share-toggle]');
+        const extSharePopover = card.querySelector('[data-external-share-popover]');
+
+        if (extShareToggle && extSharePopover) {
+            extShareToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                extSharePopover.classList.toggle('is-open');
             });
 
-            card.querySelectorAll('[data-reply-toggle]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const box = document.querySelector(`[data-reply-box="${btn.dataset.replyToggle}"]`);
-                    if (box) { box.style.display = box.style.display === 'none' ? 'block' : 'none'; if (box.style.display === 'block') box.querySelector('textarea').focus(); }
+            // Open each social share link in a new popup window
+            extSharePopover.querySelectorAll('[data-share-href]').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const url = el.dataset.shareHref;
+                    if (!url) return;
+                    const w = 600, h = 520;
+                    const left = Math.round((screen.width  - w) / 2);
+                    const top  = Math.round((screen.height - h) / 2);
+                    window.open(url, '_share', `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`);
+                    extSharePopover.classList.remove('is-open');
                 });
             });
 
-            const handleReplySubmit = async (commentId) => {
-                const input = document.querySelector(`[data-reply-input="${commentId}"]`);
-                if (!input) return;
-                const replyContent = input.value.trim();
-                if (!replyContent) { input.focus(); return; }
-                const data = await postJson(`/posts/${postId}/comments/${commentId}/reply`, { content: replyContent });
-                if (!data) return;
-                const replyAuthor = data.comment.author || 'User';
-                const replyInitial = replyAuthor.charAt(0).toUpperCase();
-                const replyItem = document.createElement('div');
-                replyItem.className = 'comment-preview has-comment reply-item';
-                replyItem.innerHTML = `
-                    <div class="d-flex align-items-start gap-2">
-                        ${data.comment.author_photo
-                            ? `<img src="/upload/${data.comment.author_photo}" alt="${replyAuthor}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;">`
-                            : `<span class="feed-author-fallback" style="width:26px;height:26px;flex-basis:26px;font-size:0.7rem;">${replyInitial}</span>`}
-                        <div>
-                            <div class="fw-bold small">${replyAuthor}</div>
-                            <div class="comment-text">${data.comment.content}</div>
-                        </div>
-                    </div>`;
-                const parentComment = card.querySelector(`[data-comment-id="${commentId}"]`);
-                if (parentComment) {
-                    let replyThread = parentComment.parentElement.querySelector('.reply-thread');
-                    if (!replyThread) {
-                        replyThread = document.createElement('div');
-                        replyThread.className = 'reply-thread';
-                        parentComment.after(replyThread);
-                    }
-                    replyThread.appendChild(replyItem);
+            // Native share (Web Share API)
+            extSharePopover.querySelector('[data-native-share]')?.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const el = e.currentTarget;
+                if (navigator.share) {
+                    try {
+                        await navigator.share({ title: el.dataset.shareTitle, url: el.dataset.shareUrl });
+                    } catch (_) {}
+                } else {
+                    // fallback: copy link
+                    try { await navigator.clipboard.writeText(el.dataset.shareUrl); }
+                    catch(_) { prompt('Copy this link:', el.dataset.shareUrl); }
                 }
-                input.value = '';
-                const box = document.querySelector(`[data-reply-box="${commentId}"]`);
-                if (box) box.style.display = 'none';
-                updateCounts(data.counts);
-            };
-
-            card.querySelectorAll('[data-reply-submit]').forEach(btn => {
-                btn.addEventListener('click', (e) => handleReplySubmit(e.currentTarget.dataset.replySubmit));
+                extSharePopover.classList.remove('is-open');
             });
-        })();
-    </script>
+
+            // Copy link
+            extSharePopover.querySelector('[data-copy-link]')?.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const link = e.currentTarget.dataset.copyLink;
+                try {
+                    await navigator.clipboard.writeText(link);
+                    const orig = e.currentTarget.innerHTML;
+                    e.currentTarget.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+                    setTimeout(() => { e.currentTarget.innerHTML = orig; }, 1500);
+                } catch (_) { prompt('Copy this link:', link); }
+                extSharePopover.classList.remove('is-open');
+            });
+        }
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('[data-external-share-popover].is-open').forEach(p => p.classList.remove('is-open'));
+        });
+    })();
+</script>
 
 </body>
 </html>

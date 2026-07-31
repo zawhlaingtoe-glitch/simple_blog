@@ -33,7 +33,7 @@
                                                 <% if (profilePhoto) { %>
                                                     <img src="/upload/<%= profilePhoto %>" alt="<%= displayName %>" class="bg-white shadow" style="width:76px;height:76px;border-radius:50%;object-fit:cover;">
                                                     <% } else { %>
-                                                        <div class="d-flex align-items-center justify-content-center bg-white text-primary fw-bold shadow" style="width:76px;height:76px;border-radius:50%;font-size:1.8rem;">
+                                                        <div class="d-flex align-items-center justify-content-center fw-bold shadow" style="width:76px;height:76px;border-radius:50%;font-size:1.8rem;background:var(--card-bg);color:var(--brand);">
                                                             <%= initial %>
                                                         </div>
                                                         <% } %>
@@ -58,53 +58,20 @@
                                 </div>
 
                                 <div class="row g-3 profile-layout">
-                                    <div class="col-lg-4 animate-fade-in-up delay-100">
-                                        <div class="hero-panel profile-panel p-3 mb-3">
-                                            <div class="d-flex align-items-center gap-2 mb-3">
-                                                <span class="icon-box"><i class="bi bi-person-gear"></i></span>
-                                                <div>
-                                                    <h4 class="fw-bold mb-0">Edit Profile</h4>
-                                                    <p class="text-muted small mb-0">Update your account information.</p>
-                                                </div>
-                                            </div>
-
-                                            <form action="/users/profile" method="POST" enctype="multipart/form-data">
-                                                <div class="mb-3">
-                                                    <label for="username" class="form-label fw-semibold">Name</label>
-                                                    <input type="text" id="username" name="username" class="form-control py-2" value="<%= displayName %>" required>
-                                                </div>
-
-                                                <div class="mb-3">
-                                                    <label for="email" class="form-label fw-semibold">Email</label>
-                                                    <input type="email" id="email" name="email" class="form-control py-2" value="<%= user ? user.email : '' %>" required>
-                                                </div>
-
-                                                <div class="mb-4">
-                                                    <label for="password" class="form-label fw-semibold">New Password</label>
-                                                    <input type="password" id="password" name="password" class="form-control py-2" placeholder="Leave blank to keep current">
-                                                </div>
-
-                                                <div class="mb-4">
-                                                    <label for="profile_photo" class="form-label fw-semibold">Profile Picture <span class="text-muted small">(optional)</span></label>
-                                                    <input type="file" id="profile_photo" name="photo" class="form-control py-2" accept="image/*">
-                                                </div>
-
-                                                <button type="submit" class="btn btn-brand w-100">
-                            <i class="bi bi-check2-circle me-2"></i>Save Profile
-                        </button>
-                                            </form>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-lg-8 animate-fade-in-up delay-200">
+                                    <div class="col-lg-12 animate-fade-in-up delay-200">
                                         <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
                                             <div>
                                                 <span class="section-label">Timeline</span>
                                                 <h3 class="fw-bold mb-0">Your Posts</h3>
                                             </div>
-                                            <button class="btn btn-brand btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#profileComposer" aria-expanded="false" aria-controls="profileComposer">
-                                                <i class="bi bi-plus-circle me-2"></i>Create Post
-                                            </button>
+                                            <div class="d-flex gap-2">
+                                                <a href="/users/profile/edit" class="btn btn-outline-brand btn-sm">
+                                                    <i class="bi bi-pencil me-1"></i>Edit Profile
+                                                </a>
+                                                <button class="btn btn-brand btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#profileComposer" aria-expanded="false" aria-controls="profileComposer">
+                                                    <i class="bi bi-plus-circle me-2"></i>Create Post
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div class="collapse mb-3" id="profileComposer">
@@ -159,6 +126,7 @@
                                                         <%
                                                             const isSharedPost = post.profile_item_type === 'share';
                                                             const postExcerpt = post.content ? post.content.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim() : '';
+                                                            const postTags = post.tags || [];
                                                         %>
                                                         <article class="article-card profile-post-card overflow-hidden">
                                                             <div class="profile-post-media">
@@ -180,6 +148,13 @@
                                                                         <h4 class="fw-bold mb-0 d-flex align-items-center flex-wrap gap-2">
                                                                             <a href="/posts/<%= post.id %>" class="feed-title-link"><%= post.title %></a>
                                                                         </h4>
+                                                                        <% if (postTags.length > 0) { %>
+                                                                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                                                                <% postTags.slice(0, 2).forEach(function(tag) { %>
+                                                                                    <span class="tag-pill">#<%= tag.name %></span>
+                                                                                <% }) %>
+                                                                            </div>
+                                                                        <% } %>
                                                                     </div>
                                                                     <% if (!isSharedPost) { %>
                                                                         <form action="/users/profile/posts/<%= post.id %>/delete" method="POST">
