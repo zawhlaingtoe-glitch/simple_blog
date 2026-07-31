@@ -22,10 +22,10 @@ app.use("/upload", express.static(path.join(__dirname, "public/upload")));
 const User = require("./models/userModel");
 const Tag = require("./models/tagModel");
 
-// Ensure tag tables exist on startup
+
 Tag.ensureTables().catch(err => console.error("Tag table error:", err));
 
-// Manual cookie parser helper for global auth middleware
+
 const getTokenFromCookie = (req) => {
     const cookieHeader = req.headers.cookie;
     if (!cookieHeader) return null;
@@ -34,7 +34,7 @@ const getTokenFromCookie = (req) => {
     return tokenCookie ? decodeURIComponent(tokenCookie.split("=")[1]) : null;
 };
 
-// Global authentication status middleware
+
 app.use(async(req, res, next) => {
     const token = getTokenFromCookie(req);
     res.locals.currentUser = null;
@@ -50,9 +50,19 @@ app.use(async(req, res, next) => {
                 res.locals.isLoggedIn = true;
             }
         } catch (error) {
-            // Token is invalid/expired, ignore and let them be guest
+            
         }
     }
+    
+    res.locals.readingTime = (content) => {
+        if (!content) return '1 min read';
+        const text = String(content).replace(/<[^>]*>/g, '');
+        const wordCount = text.split(/\s+/).filter(Boolean).length;
+        const minutes = Math.max(1, Math.ceil(wordCount / 200));
+        return minutes + ' min read';
+    };
+    res.locals.serverHost = 'http://localhost:3500';
+
     next();
 });
 
@@ -61,13 +71,38 @@ const HOST = process.env.HOST || 'localhost';
 
 const userRoute = require("./routes/userRoute");
 const postRoute = require("./routes/postRoute");
+
+
+const apiAuthRoute = require("./routes/api/authApiRoute");
+const apiPostRoute = require("./routes/api/postApiRoute");
+const apiUserRoute = require("./routes/api/userApiRoute");
+const apiTagRoute  = require("./routes/api/tagApiRoute");
+
+app.use("/api/v1/auth",  apiAuthRoute);
+app.use("/api/v1/posts", apiPostRoute);
+app.use("/api/v1/users", apiUserRoute);
+app.use("/api/v1/tags",  apiTagRoute);
+
+
+app.use("/api", (req, res) => {
+    return res.status(404).json({
+        status: "error",
+        message: `Cannot ${req.method} ${req.originalUrl}`
+    });
+});
+
+
 const Post = require("./models/postModel");
 app.get("/", async(req, res) => {
     try {
-        const posts = await Post.findAll(6, 0, req.user ?.id || null);
+        let posts = await Post.findAll(6, 0, req.user ?.id || null);
+        const Tag = require("./models/tagModel");
+        posts = await Tag.attachToPosts(posts);
+        const popularTags = await Tag.findAllWithCounts(15);
         return res.render("home", {
             title: "Home",
-            posts: posts || []
+            posts: posts || [],
+            popularTags
         });
     } catch (error) {
         console.error("Home posts error:", error);

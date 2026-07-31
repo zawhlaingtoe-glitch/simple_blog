@@ -10,6 +10,7 @@ route.post("/login", userController.login);
 route.get("/logout", userController.logout);
 
 route.get("/profile", verifyToken, userController.profile);
+route.get("/profile/edit", verifyToken, userController.showEditProfile);
 route.post("/profile", verifyToken, userController.updateProfile);
 route.post("/profile/posts", verifyToken, userController.createProfilePost);
 route.post("/profile/posts/:id/delete", verifyToken, userController.deleteProfilePost);

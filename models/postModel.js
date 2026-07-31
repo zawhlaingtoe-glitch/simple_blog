@@ -86,8 +86,7 @@ class Post {
         try {
             await Post.ensureVisibilityColumn();
             const [rows] = await db.query(
-                "INSERT INTO POSTS(user_id,title,content,photo,visibility,created_at) VALUES(?,?,?,?,?,?)", 
-                [userId, title, content, photo, visibility, currentTime]
+                "INSERT INTO POSTS(user_id,title,content,photo,visibility,created_at) VALUES(?,?,?,?,?,?)", [userId, title, content, photo, visibility, currentTime]
             );
             console.log("Post created ID with: ", rows.insertId);
             return rows.insertId;
@@ -102,8 +101,7 @@ class Post {
             await Post.ensureAuthorPhotoColumn();
             await Post.ensureVisibilityColumn();
             const [rows] = await db.query(
-                "SELECT POSTS.*, username AS author, USERS.profile_photo AS author_photo FROM POSTS JOIN USERS ON POSTS.user_id = USERS.id WHERE POSTS.id = ?", 
-                [id]
+                "SELECT POSTS.*, username AS author, USERS.profile_photo AS author_photo FROM POSTS JOIN USERS ON POSTS.user_id = USERS.id WHERE POSTS.id = ?", [id]
             );
             return rows[0];
         } catch (error) {
@@ -117,13 +115,11 @@ class Post {
             await Post.ensureVisibilityColumn();
             if (photo) {
                 await db.query(
-                    "UPDATE POSTS SET title = ?, content = ?, photo = ?, visibility = ? WHERE id = ? AND user_id = ?", 
-                    [title, content, photo, visibility, id, userId]
+                    "UPDATE POSTS SET title = ?, content = ?, photo = ?, visibility = ? WHERE id = ? AND user_id = ?", [title, content, photo, visibility, id, userId]
                 );
             } else {
                 await db.query(
-                    "UPDATE POSTS SET title = ?, content = ?, visibility = ? WHERE id = ? AND user_id = ?", 
-                    [title, content, visibility, id, userId]
+                    "UPDATE POSTS SET title = ?, content = ?, visibility = ? WHERE id = ? AND user_id = ?", [title, content, visibility, id, userId]
                 );
             }
         } catch (error) {
@@ -179,29 +175,53 @@ class Post {
         }
     }
 
+    static async ensureFulltextIndex() {
+        try {
+            await db.query("ALTER TABLE POSTS ADD FULLTEXT INDEX ft_posts_search (title, content)");
+            console.log("Fulltext search index ensured.");
+        } catch (error) {
+            // Index already exists — ignore duplicate key errors
+            if (error.code !== "ER_DUP_KEYNAME" && error.code !== "HY000") {
+                console.error("Fulltext index error:", error);
+            }
+        }
+    }
+
     static async search(query, limit = 10, offset = 0, currentUserId = null) {
         try {
             await Post.ensureVisibilityColumn();
+
+            // Use LIKE-based partial matching so e.g. searching "AI" matches "About AI"
             const searchTerm = `%${query}%`;
             let sql = "";
             let params = [];
 
             if (currentUserId) {
-                sql = `SELECT POSTS.*, username AS author, USERS.profile_photo AS author_photo
+                sql = `SELECT POSTS.*, username AS author, USERS.profile_photo AS author_photo,
+                               CASE
+                                 WHEN POSTS.title LIKE ? THEN 3
+                                 WHEN POSTS.content LIKE ? THEN 1
+                                 ELSE 0
+                               END AS relevance
                        FROM POSTS
                        LEFT JOIN USERS ON POSTS.user_id = USERS.id
                        WHERE (POSTS.title LIKE ? OR POSTS.content LIKE ?)
                          AND (POSTS.visibility = 'public' OR POSTS.user_id = ?)
-                       ORDER BY POSTS.id DESC LIMIT ? OFFSET ?`;
-                params = [searchTerm, searchTerm, currentUserId, limit, offset];
+                       ORDER BY relevance DESC, POSTS.id DESC LIMIT ? OFFSET ?`;
+                params = [searchTerm, searchTerm, searchTerm, searchTerm, currentUserId, limit, offset];
             } else {
-                sql = `SELECT POSTS.*, username AS author, USERS.profile_photo AS author_photo
+                sql = `SELECT POSTS.*, username AS author, USERS.profile_photo AS author_photo,
+                               CASE
+                                 WHEN POSTS.title LIKE ? THEN 3
+                                 WHEN POSTS.content LIKE ? THEN 1
+                                 ELSE 0
+                               END AS relevance
                        FROM POSTS
                        LEFT JOIN USERS ON POSTS.user_id = USERS.id
                        WHERE (POSTS.title LIKE ? OR POSTS.content LIKE ?)
                          AND POSTS.visibility = 'public'
-                       ORDER BY POSTS.id DESC LIMIT ? OFFSET ?`;
-                params = [searchTerm, searchTerm, limit, offset];
+                       ORDER BY relevance DESC, POSTS.id DESC LIMIT ? OFFSET ?`;
+                params = [searchTerm, searchTerm, searchTerm, searchTerm, limit, offset];
             }
 
             const [rows] = await db.query(sql, params);
@@ -214,7 +234,6 @@ class Post {
 
     static async searchCount(query, currentUserId = null) {
         try {
-            await Post.ensureVisibilityColumn();
             const searchTerm = `%${query}%`;
             let sql = "";
             let params = [];
@@ -231,7 +250,9 @@ class Post {
                 params = [searchTerm, searchTerm];
             }
 
-            const [[row]] = await db.query(sql, params);
+            const [
+                [row]
+            ] = await db.query(sql, params);
             return row.total;
         } catch (error) {
             console.error("Error counting search results:", error);
@@ -261,7 +282,9 @@ class Post {
                 params = [slug];
             }
 
-            const [[row]] = await db.query(query, params);
+            const [
+                [row]
+            ] = await db.query(query, params);
             return row.total;
         } catch (error) {
             console.error("Error counting posts by tag:", error);
@@ -283,7 +306,9 @@ class Post {
                 query = `SELECT COUNT(*) AS total FROM POSTS WHERE visibility = 'public'`;
             }
 
-            const [[row]] = await db.query(query, params);
+            const [
+                [row]
+            ] = await db.query(query, params);
             return row.total;
         } catch (error) {
             console.error("Error counting posts:", error);
